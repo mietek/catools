@@ -10,9 +10,10 @@ import Control.Monad.State (StateT, evalStateT, liftIO)
 import Control.Lens ((.=), (^.), makeLenses, set, use)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (isJust, listToMaybe)
-import Network.Wreq (FormParam ((:=)), responseBody, responseCookieJar)
+import Network.Wreq (FormParam ((:=)), cookies, defaults, getWith, postWith,
+  responseBody, responseCookieJar)
 import System.Environment (getEnv)
-import Text.HTML.TagSoup ((~/=))
+import Text.HTML.TagSoup ((~/=), fromAttrib, fromTagText, parseTags)
 
 import qualified Data.ByteString.Lazy.Char8 as Lbs
 import qualified Network.HTTP.Client as H
@@ -91,20 +92,20 @@ login :: String -> String -> String -> Session ()
 login user code pass = do
     _ <- getWithSession baseUrl
     (_, tags1) <- postWithSession mainUrl []
-    let (c1, c2, c3) = fetchParts code tags1 mkCode
+    let (c1, c2, c3) = fetchParts code tags1 mkCodeTag
     (_, tags2) <- postWithSession mainUrl
       [ "UserID" := user
       , "pwd1"   := c1
       , "pwd2"   := c2
       , "pwd3"   := c3
       ]
-    let (p1, p2, p3) = fetchParts pass tags2 mkPass
+    let (p1, p2, p3) = fetchParts pass tags2 mkPassTag
     (_, tags3) <- postWithSession mainUrl
       [ "pwd1" := p1
       , "pwd2" := p2
       , "pwd3" := p3
       ]
-    tags4 <- if isJust (findTag tags3 menu)
+    tags4 <- if isJust (findTag tags3 conTag)
       then do
         (_, tags') <- postWithSession mainUrl
           [ "Menu" := ("Continue" :: String)
@@ -112,20 +113,20 @@ login user code pass = do
         return tags'
       else
         return tags3
-    let accOwn  = Lbs.unpack (fetchTagTextAfter tags4 3 own)
-        accNum  = Lbs.unpack (fetchTagValue tags4 acc)
-        accName = Lbs.unpack (fetchTagTextAfter tags4 8 acc)
-        accBal  = Lbs.unpack (fetchTagTextAfter tags4 12 acc)
+    let accOwn  = Lbs.unpack (fetchTagTextAfter tags4 3 ownTag)
+        accNum  = Lbs.unpack (fetchTagValue tags4 accTag)
+        accName = Lbs.unpack (fetchTagTextAfter tags4 8 accTag)
+        accBal  = Lbs.unpack (fetchTagTextAfter tags4 12 accTag)
     sessionAccountOwner   .= Just accOwn
     sessionAccountNumber  .= Just accNum
     sessionAccountName    .= Just accName
     sessionAccountBalance .= Just accBal
   where
-    mkCode n = "<label for=ipos" ++ show n ++ " class=tran_confirm>"
-    mkPass n = "<label for=pos"  ++ show n ++ " class=tran_confirm>"
-    menu = "<input type=submit name=Menu value=Continue>"
-    own  = "<div id=name_right_header_border class=name_right_header_border>"
-    acc  = "<input type=submit name=Acc>"
+    conTag = "<input type=submit name=Menu value=Continue>"
+    ownTag = "<div id=name_right_header_border"
+    accTag = "<input type=submit name=Acc>"
+    mkCodeTag n = "<label for=ipos" ++ show n ++ ">"
+    mkPassTag n = "<label for=pos"  ++ show n ++ ">"
 
 logout :: Session ()
 logout = do
@@ -156,36 +157,32 @@ downloadTransactions = do
     (res, _) <- postWithSession mainUrl
       [ "Menu" := ("Download" :: String)
       ]
-    return (res^.responseBody)
+    return (res ^. responseBody)
 
 --------------------------------------------------------------------------------
 
 getWithSession :: String -> Session (Response, [Tag])
 getWithSession url = do
     jar <- use sessionCookies
-    let opts = set W.cookies jar W.defaults
-    res <- liftIO (W.getWith opts url)
-    sessionCookies .= res^.responseCookieJar
-    let tags = parseTags res
+    let opts = set cookies jar defaults
+    res <- liftIO (getWith opts url)
+    sessionCookies .= res ^. responseCookieJar
+    let tags = parseTags (res ^. responseBody)
     return (res, tags)
 
 postWithSession :: String -> [FormParam] -> Session (Response, [Tag])
 postWithSession url params = do
-    jar  <- use sessionCookies
-    tran <- use sessionToken
-    let opts = set W.cookies jar W.defaults
-        tranParams = ("Trxn" := tran) : params
-    res <- liftIO (W.postWith opts url tranParams)
-    let tags = parseTags res
-    sessionCookies .= res^.responseCookieJar
-    sessionToken   .= Lbs.unpack `fmap` findTagValue tags transactionTag
+    jar <- use sessionCookies
+    tok <- use sessionToken
+    let opts = set cookies jar defaults
+        tokParams = ("Trxn" := tok) : params
+    res <- liftIO (postWith opts url tokParams)
+    let tags = parseTags (res ^. responseBody)
+    sessionCookies .= res ^. responseCookieJar
+    sessionToken   .= Lbs.unpack `fmap` findTagValue tags tokTag
     return (res, tags)
   where
-    transactionTag = "<input type=hidden name=Trxn>"
-
-parseTags :: Response -> [Tag]
-parseTags res =
-    S.parseTags (res^.responseBody)
+    tokTag = "<input type=hidden name=Trxn>"
 
 --------------------------------------------------------------------------------
 
@@ -195,7 +192,7 @@ findTag tags tag =
 
 findTagValue :: [Tag] -> String -> Maybe (ByteString)
 findTagValue tags tag =
-    S.fromAttrib "value" `fmap` findTag tags tag
+    fromAttrib "value" `fmap` findTag tags tag
 
 fetchTag :: [Tag] -> String -> Tag
 fetchTag tags tag =
@@ -203,7 +200,7 @@ fetchTag tags tag =
 
 fetchTagValue :: [Tag] -> String -> ByteString
 fetchTagValue tags tag =
-    S.fromAttrib "value" (fetchTag tags tag)
+    fromAttrib "value" (fetchTag tags tag)
 
 fetchTagAfter :: [Tag] -> Int -> String -> Tag
 fetchTagAfter tags n tag =
@@ -211,7 +208,7 @@ fetchTagAfter tags n tag =
 
 fetchTagTextAfter :: [Tag] -> Int -> String -> ByteString
 fetchTagTextAfter tags n tag =
-    S.fromTagText (fetchTagAfter tags n tag)
+    fromTagText (fetchTagAfter tags n tag)
 
 fetchParts :: String -> [Tag] -> (Int -> String) -> (String, String, String)
 fetchParts whole tags mkTag =
