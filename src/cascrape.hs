@@ -6,57 +6,38 @@
 
 module Main (main) where
 
+import Control.Monad (when)
 import Control.Monad.State (StateT, evalStateT, liftIO)
 import Control.Lens ((.=), (^.), makeLenses, set, use)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (isJust, listToMaybe)
+import Network.HTTP.Client (CookieJar, createCookieJar)
 import Network.Wreq (FormParam ((:=)), cookies, defaults, getWith, postWith,
   responseBody, responseCookieJar)
 import System.Environment (getEnv)
 import Text.HTML.TagSoup ((~/=), fromAttrib, fromTagText, parseTags)
 
 import qualified Data.ByteString.Lazy.Char8 as Lbs
-import qualified Network.HTTP.Client as H
-import qualified Network.Wreq as W
-import qualified Text.HTML.TagSoup as S
+import qualified Text.HTML.TagSoup as Soup
 
 --------------------------------------------------------------------------------
 
+type Tag = Soup.Tag ByteString
+
 data SessionState = SessionState
-    { _sessionCookies        :: H.CookieJar
-    , _sessionToken          :: Maybe ByteString
-    , _sessionAccountOwner   :: Maybe ByteString
-    , _sessionAccountNumber  :: Maybe ByteString
-    , _sessionAccountName    :: Maybe ByteString
-    , _sessionAccountBalance :: Maybe ByteString
+    { _sessionCookies        :: CookieJar
+    , _sessionResponseBody   :: ByteString
+    , _sessionResponseTags   :: [Tag]
+    , _sessionToken          :: ByteString
+    , _sessionAccountOwner   :: ByteString
+    , _sessionAccountNumber  :: ByteString
+    , _sessionAccountName    :: ByteString
+    , _sessionAccountBalance :: ByteString
     }
 
 makeLenses ''SessionState
 
 type Session a = StateT SessionState IO a
-
-type Response = W.Response ByteString
-
-type Tag = S.Tag ByteString
-
---------------------------------------------------------------------------------
-
-emptySession :: SessionState
-emptySession =
-    SessionState
-      { _sessionCookies        = H.createCookieJar []
-      , _sessionToken          = Nothing
-      , _sessionAccountOwner   = Nothing
-      , _sessionAccountNumber  = Nothing
-      , _sessionAccountName    = Nothing
-      , _sessionAccountBalance = Nothing
-      }
-
-baseUrl :: String
-baseUrl = "https://www.caterallenonline.co.uk"
-
-mainUrl :: String
-mainUrl = baseUrl ++ "/WebAccess.dll"
 
 --------------------------------------------------------------------------------
 
@@ -67,10 +48,10 @@ main = do
     pass <- getEnv "CA_PASSWORD"
     flip evalStateT emptySession $ do
       login user code pass
-      Just accOwn  <- use sessionAccountOwner
-      Just accNum  <- use sessionAccountNumber
-      Just accName <- use sessionAccountName
-      Just accBal  <- use sessionAccountBalance
+      accOwn  <- use sessionAccountOwner
+      accNum  <- use sessionAccountNumber
+      accName <- use sessionAccountName
+      accBal  <- use sessionAccountBalance
       liftIO $ do
         putMark
         Lbs.putStrLn (Lbs.append "Account owner:    " accOwn)
@@ -88,39 +69,45 @@ main = do
 
 --------------------------------------------------------------------------------
 
+baseUrl :: String
+baseUrl = "https://www.caterallenonline.co.uk"
+
+mainUrl :: String
+mainUrl = baseUrl ++ "/WebAccess.dll"
+
 login :: String -> String -> String -> Session ()
 login user code pass = do
-    _ <- getWithSession baseUrl
-    (_, tags1) <- postWithSession mainUrl []
+    getWithSession baseUrl
+    postWithSession mainUrl []
+    tags1 <- use sessionResponseTags
     let (c1, c2, c3) = fetchParts code tags1 mkCodeTag
-    (_, tags2) <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "UserID" := user
       , "pwd1"   := c1
       , "pwd2"   := c2
       , "pwd3"   := c3
       ]
+    tags2 <- use sessionResponseTags
     let (p1, p2, p3) = fetchParts pass tags2 mkPassTag
-    (_, tags3) <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "pwd1" := p1
       , "pwd2" := p2
       , "pwd3" := p3
       ]
-    tags4 <- if isJust (findTag tags3 conTag)
-      then do
-        (_, tags') <- postWithSession mainUrl
-          [ "Menu" := ("Continue" :: String)
-          ]
-        return tags'
-      else
-        return tags3
+    tags3 <- use sessionResponseTags
+    when (isJust (findTag tags3 conTag)) $
+      postWithSession mainUrl
+        [ "Menu" := ("Continue" :: String)
+        ]
+    tags4 <- use sessionResponseTags
     let accOwn  = fetchTagTextAfter tags4 3 ownTag
         accNum  = fetchTagValue tags4 accTag
         accName = fetchTagTextAfter tags4 8 accTag
         accBal  = fetchTagTextAfter tags4 12 accTag
-    sessionAccountOwner   .= Just accOwn
-    sessionAccountNumber  .= Just accNum
-    sessionAccountName    .= Just accName
-    sessionAccountBalance .= Just accBal
+    sessionAccountOwner   .= accOwn
+    sessionAccountNumber  .= accNum
+    sessionAccountName    .= accName
+    sessionAccountBalance .= accBal
   where
     conTag = "<input type=submit name=Menu value=Continue>"
     ownTag = "<div id=name_right_header_border"
@@ -130,21 +117,20 @@ login user code pass = do
 
 logout :: Session ()
 logout = do
-    _ <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "Menu" := ("Log Out" :: String)
       ]
-    return ()
 
 downloadTransactions :: Session ByteString
 downloadTransactions = do
-    Just accNum <- use sessionAccountNumber
-    _ <- postWithSession mainUrl
+    accNum <- use sessionAccountNumber
+    postWithSession mainUrl
       [ "Acc" := accNum
       ]
-    _ <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "Menu" := ("Download Transaction Details" :: String)
       ]
-    _ <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "Menu"       := ("Accept" :: String)
       , "fDay"       := ("01" :: String)
       , "fMonth"     := ("07" :: String)
@@ -154,33 +140,52 @@ downloadTransactions = do
       , "tYear"      := ("2014" :: String)
       , "FileFormat" := ("EXCEL" :: String)
       ]
-    (res, _) <- postWithSession mainUrl
+    postWithSession mainUrl
       [ "Menu" := ("Download" :: String)
       ]
-    return (res ^. responseBody)
+    use sessionResponseBody
 
 --------------------------------------------------------------------------------
 
-getWithSession :: String -> Session (Response, [Tag])
+emptySession :: SessionState
+emptySession =
+    SessionState
+      { _sessionCookies        = createCookieJar []
+      , _sessionResponseBody   = Lbs.empty
+      , _sessionResponseTags   = []
+      , _sessionToken          = Lbs.empty
+      , _sessionAccountOwner   = Lbs.empty
+      , _sessionAccountNumber  = Lbs.empty
+      , _sessionAccountName    = Lbs.empty
+      , _sessionAccountBalance = Lbs.empty
+      }
+
+getWithSession :: String -> Session ()
 getWithSession url = do
     jar <- use sessionCookies
     let opts = set cookies jar defaults
     res <- liftIO (getWith opts url)
-    sessionCookies .= res ^. responseCookieJar
-    let tags = parseTags (res ^. responseBody)
-    return (res, tags)
+    let body = res ^. responseBody
+        tags = parseTags body
+    sessionCookies      .= res ^. responseCookieJar
+    sessionResponseBody .= body
+    sessionResponseTags .= tags
+    sessionToken        .= findTagValue tags tokTag
+  where
+    tokTag = "<input type=hidden name=Trxn>"
 
-postWithSession :: String -> [FormParam] -> Session (Response, [Tag])
+postWithSession :: String -> [FormParam] -> Session ()
 postWithSession url params = do
     jar <- use sessionCookies
     tok <- use sessionToken
     let opts = set cookies jar defaults
-        tokParams = ("Trxn" := tok) : params
-    res <- liftIO (postWith opts url tokParams)
-    let tags = parseTags (res ^. responseBody)
-    sessionCookies .= res ^. responseCookieJar
-    sessionToken   .= findTagValue tags tokTag
-    return (res, tags)
+    res <- liftIO (postWith opts url (("Trxn" := tok) : params))
+    let body = res ^. responseBody
+        tags = parseTags body
+    sessionCookies      .= res ^. responseCookieJar
+    sessionResponseBody .= body
+    sessionResponseTags .= tags
+    sessionToken        .= findTagValue tags tokTag
   where
     tokTag = "<input type=hidden name=Trxn>"
 
@@ -190,9 +195,9 @@ findTag :: [Tag] -> String -> Maybe Tag
 findTag tags tag =
     listToMaybe (dropWhile (~/= tag) tags)
 
-findTagValue :: [Tag] -> String -> Maybe (ByteString)
+findTagValue :: [Tag] -> String -> ByteString
 findTagValue tags tag =
-    fromAttrib "value" `fmap` findTag tags tag
+    maybe Lbs.empty (fromAttrib "value") (findTag tags tag)
 
 fetchTag :: [Tag] -> String -> Tag
 fetchTag tags tag =
