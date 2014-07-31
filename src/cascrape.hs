@@ -1,29 +1,76 @@
 --------------------------------------------------------------------------------
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
 import Control.Monad.State (StateT, evalStateT, liftIO)
-import Control.Lens ((&), (.=), (.~), (^.), makeLenses, use)
+import Control.Lens (assign, makeLenses, set, use, view)
+import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (isJust, listToMaybe)
-import Network.Wreq (FormParam ((:=)))
+import Network.Wreq (FormParam)
 import System.Environment (getEnv)
 import Text.HTML.TagSoup ((~/=))
 
-import qualified Data.ByteString.Lazy.Char8 as L
+import qualified Data.ByteString.Char8 as Sbs
+import qualified Data.ByteString.Lazy.Char8 as Lbs
 import qualified Network.HTTP.Client as H
 import qualified Network.Wreq as W
 import qualified Text.HTML.TagSoup as S
 
 --------------------------------------------------------------------------------
 
+baseUrl :: String
+baseUrl =
+    "https://www.caterallenonline.co.uk"
+
+mainUrl :: String
+mainUrl =
+    baseUrl ++ "/WebAccess.dll"
+
+--------------------------------------------------------------------------------
+
+findTag :: [S.Tag ByteString] -> String -> Maybe (S.Tag ByteString)
+findTag tags tag =
+    listToMaybe (dropWhile (~/= tag) tags)
+
+findTagValue :: [S.Tag ByteString] -> String -> Maybe (ByteString)
+findTagValue tags tag =
+    S.fromAttrib "value" `fmap` findTag tags tag
+
+fetchTag :: [S.Tag ByteString] -> String -> S.Tag ByteString
+fetchTag tags tag =
+    head (dropWhile (~/= tag) tags)
+
+fetchTagValue :: [S.Tag ByteString] -> String -> ByteString
+fetchTagValue tags tag =
+    S.fromAttrib "value" (fetchTag tags tag)
+
+fetchTagAfter :: [S.Tag ByteString] -> Int -> String -> S.Tag ByteString
+fetchTagAfter tags n tag =
+    head (drop n (dropWhile (~/= tag) tags))
+
+fetchTagTextAfter :: [S.Tag ByteString] -> Int -> String -> ByteString
+fetchTagTextAfter tags n tag =
+    S.fromTagText (fetchTagAfter tags n tag)
+
+fetchParts :: String -> [S.Tag ByteString] -> (Int -> String) -> (String, String, String)
+fetchParts whole tags mkTag =
+    (wrap (fetch 1), wrap (fetch 2), wrap (fetch 3))
+  where
+    wrap s  = [whole !! (read s - 1)]
+    fetch n = Lbs.unpack (fetchTagTextAfter tags 1 (mkTag n))
+
+--------------------------------------------------------------------------------
+
+type Session a = StateT SessionState IO a
+
 data SessionState = SessionState
-    { _sessionUsername       :: String
-    , _sessionAccessCode     :: String
-    , _sessionPassword       :: String
-    , _sessionCookies        :: H.CookieJar
+    { _sessionCookies        :: H.CookieJar
+    , _sessionToken          :: Maybe String
+    , _sessionAccountOwner   :: Maybe String
     , _sessionAccountNumber  :: Maybe String
     , _sessionAccountName    :: Maybe String
     , _sessionAccountBalance :: Maybe String
@@ -31,170 +78,121 @@ data SessionState = SessionState
 
 makeLenses ''SessionState
 
-initSession :: String -> String -> String -> SessionState
-initSession user code pass =
+emptySession :: SessionState
+emptySession =
     SessionState
-      { _sessionUsername       = user
-      , _sessionAccessCode     = code
-      , _sessionPassword       = pass
-      , _sessionCookies        = H.createCookieJar []
+      { _sessionCookies        = H.createCookieJar []
+      , _sessionToken          = Nothing
+      , _sessionAccountOwner   = Nothing
       , _sessionAccountNumber  = Nothing
       , _sessionAccountName    = Nothing
       , _sessionAccountBalance = Nothing
       }
 
---------------------------------------------------------------------------------
-
-type Session a = StateT SessionState IO a
-
-getWithSession :: String -> Session (W.Response L.ByteString)
+getWithSession :: String -> Session (W.Response ByteString, [S.Tag ByteString])
 getWithSession url = do
     jar <- use sessionCookies
-    res <- liftIO $ W.getWith (cookie jar) url
-    sessionCookies .= res ^. W.responseCookieJar
-    return res
+    res <- liftIO (W.getWith (set W.cookies jar W.defaults) url)
+    assign sessionCookies (view W.responseCookieJar res)
+    let tags = parseTags res
+    return (res, tags)
 
-postWithSession :: String -> [FormParam] -> Session (W.Response L.ByteString)
+postWithSession :: String -> [FormParam] -> Session (W.Response ByteString, [S.Tag ByteString])
 postWithSession url params = do
     jar <- use sessionCookies
-    res <- liftIO $ W.postWith (cookie jar) url params
-    sessionCookies .= res ^. W.responseCookieJar
-    return res
+    mtran <- use sessionToken
+    let extraParam = case mtran of
+            Just tran -> [ param "Trxn" tran ]
+            Nothing   -> []
+    let params' = extraParam ++ params
+    res <- liftIO (W.postWith (set W.cookies jar W.defaults) url params')
+    assign sessionCookies (view W.responseCookieJar res)
+    let tags = parseTags res
+    assign sessionToken (Lbs.unpack `fmap` findTagValue tags transactionTag)
+    return (res, tags)
+  where
+    transactionTag = "<input type=hidden name=Trxn>"
 
-cookie :: H.CookieJar -> W.Options
-cookie jar =
-    W.defaults & W.cookies .~ jar
+param :: Sbs.ByteString -> String -> FormParam
+param name str =
+    name W.:= str
 
---------------------------------------------------------------------------------
-
-parseTags :: W.Response L.ByteString -> [S.Tag L.ByteString]
+parseTags :: W.Response ByteString -> [S.Tag ByteString]
 parseTags res =
-    S.parseTags $ res ^. W.responseBody
+    S.parseTags (view W.responseBody res)
 
 --------------------------------------------------------------------------------
 
-findTag :: [S.Tag L.ByteString] -> String -> Maybe (S.Tag L.ByteString)
-findTag tags tag =
-    listToMaybe $ dropWhile (~/= tag) tags
-
-getTag :: [S.Tag L.ByteString] -> String -> S.Tag L.ByteString
-getTag tags tag =
-    head $ dropWhile (~/= tag) tags
-
-getTagValue :: [S.Tag L.ByteString] -> String -> L.ByteString
-getTagValue tags tag =
-    S.fromAttrib "value" $ getTag tags tag
-
-getTagAfter :: [S.Tag L.ByteString] -> Int -> String -> S.Tag L.ByteString
-getTagAfter tags n tag =
-    head . drop n $ dropWhile (~/= tag) tags
-
-getTagTextAfter :: [S.Tag L.ByteString] -> Int -> String -> L.ByteString
-getTagTextAfter tags n tag =
-    S.fromTagText $ getTagAfter tags n tag
-
---------------------------------------------------------------------------------
-
-caBaseUrl :: String
-caBaseUrl =
-    "https://www.caterallenonline.co.uk"
-
-caUrl :: String
-caUrl =
-    caBaseUrl ++ "/WebAccess.dll"
-
-transactionTag :: String
-transactionTag =
-    "<input type=hidden name=Trxn>"
-
-mkCodeTag :: Int -> String
-mkCodeTag n =
-    "<label for=ipos" ++ show n ++ " class=tran_confirm>"
-
-mkPasswordTag :: Int -> String
-mkPasswordTag n =
-    "<label for=pos"  ++ show n ++ " class=tran_confirm>"
-
-menuTag :: String
-menuTag =
-    "<input type=submit name=Menu value=Continue>"
-
-accountTag :: String
-accountTag =
-    "<input type=submit name=Acc>"
-
---------------------------------------------------------------------------------
-
-getParts :: String -> [S.Tag L.ByteString] -> (Int -> String) -> (String, String, String)
-getParts whole tags mkTag =
-    (wrap $ getPart 1, wrap $ getPart 2, wrap $ getPart 3)
+login :: String -> String -> String -> Session ()
+login user code pass = do
+    _ <- getWithSession baseUrl
+    (_, tags1) <- postWithSession mainUrl []
+    let (c1, c2, c3) = fetchParts code tags1 mkCode
+    (_, tags2) <- postWithSession mainUrl
+      [ param "UserID" user
+      , param "pwd1"   c1
+      , param "pwd2"   c2
+      , param "pwd3"   c3
+      ]
+    let (p1, p2, p3) = fetchParts pass tags2 mkPass
+    (_, tags3) <- postWithSession mainUrl
+      [ param "pwd1" p1
+      , param "pwd2" p2
+      , param "pwd3" p3
+      ]
+    tags4 <- if isJust (findTag tags3 menu)
+    then do
+      (_, tags') <- postWithSession mainUrl
+        [ param "Menu" "Continue"
+        ]
+      return tags'
+    else
+      return tags3
+    let accOwn  = Lbs.unpack (fetchTagTextAfter tags4 3 own)
+        accNum  = Lbs.unpack (fetchTagValue tags4 acc)
+        accName = Lbs.unpack (fetchTagTextAfter tags4 8 acc)
+        accBal  = Lbs.unpack (fetchTagTextAfter tags4 12 acc)
+    assign sessionAccountOwner   (Just accOwn)
+    assign sessionAccountNumber  (Just accNum)
+    assign sessionAccountName    (Just accName)
+    assign sessionAccountBalance (Just accBal)
   where
-    wrap s    = [whole !! (read s - 1)]
-    getPart n = L.unpack . getTagTextAfter tags 1 $ mkTag n
+    mkCode n = "<label for=ipos" ++ show n ++ " class=tran_confirm>"
+    mkPass n = "<label for=pos"  ++ show n ++ " class=tran_confirm>"
+    menu = "<input type=submit name=Menu value=Continue>"
+    own  = "<div id=name_right_header_border class=name_right_header_border>"
+    acc  = "<input type=submit name=Acc>"
 
---------------------------------------------------------------------------------
+logout :: Session ()
+logout = do
+    _ <- postWithSession mainUrl
+      [ param "Menu" "Log Out"
+      ]
+    return ()
 
-login :: Session ()
-login =
-    step1
-  where
-    step1 = do
-        res <- getWithSession caBaseUrl
-        let tags = parseTags res
-            tran = getTagValue tags transactionTag
-        step2 tran
-
-    step2 tran = do
-        code <- use sessionAccessCode
-        res <- postWithSession caUrl
-          [ "Trxn" := tran
-          ]
-        let tags  = parseTags res
-            tran' = getTagValue tags transactionTag
-            parts = getParts code tags mkCodeTag
-        step3 tran' parts
-
-    step3 tran (p1, p2, p3) = do
-        user <- use sessionUsername
-        pass <- use sessionPassword
-        res <- postWithSession caUrl
-          [ "Trxn"   := tran
-          , "UserID" := user
-          , "pwd1"   := p1
-          , "pwd2"   := p2
-          , "pwd3"   := p3
-          ]
-        let tags  = parseTags res
-            tran' = getTagValue tags transactionTag
-            parts = getParts pass tags mkPasswordTag
-        step4 tran' parts
-
-    step4 tran (p1, p2, p3) = do
-        res <- postWithSession caUrl
-          [ "Trxn" := tran
-          , "pwd1" := p1
-          , "pwd2" := p2
-          , "pwd3" := p3
-          ]
-        let tags = parseTags res
-        if isJust $ findTag tags menuTag
-          then step5
-          else step6 tags
-
-    step5 = do
-        res <- postWithSession caUrl
-          [ "Menu" := ("Continue" :: L.ByteString)
-          ]
-        let tags = parseTags res
-        step6 tags
-
-    step6 tags = do
-        let accNum  = L.unpack $ getTagValue tags accountTag
-            accName = L.unpack $ getTagTextAfter tags 8 accountTag
-            accBal  = L.unpack $ getTagTextAfter tags 12 accountTag
-        sessionAccountNumber  .= Just accNum
-        sessionAccountName    .= Just accName
-        sessionAccountBalance .= Just accBal
+downloadTransactions :: Session ByteString
+downloadTransactions = do
+    Just accNum <- use sessionAccountNumber
+    _ <- postWithSession mainUrl
+      [ param "Acc" accNum
+      ]
+    _ <- postWithSession mainUrl
+      [ param "Menu" "Download Transaction Details"
+      ]
+    _ <- postWithSession mainUrl
+      [ param "Menu"       "Accept"
+      , param "fDay"       "01"
+      , param "fMonth"     "07"
+      , param "fYear"      "2014"
+      , param "tDay"       "31"
+      , param "tMonth"     "07"
+      , param "tYear"      "2014"
+      , param "FileFormat" "EXCEL"
+      ]
+    (res, _) <- postWithSession mainUrl
+      [ param "Menu" "Download"
+      ]
+    return (view W.responseBody res)
 
 --------------------------------------------------------------------------------
 
@@ -203,16 +201,25 @@ main = do
     user <- getEnv "CA_USERNAME"
     code <- getEnv "CA_ACCESS_CODE"
     pass <- getEnv "CA_PASSWORD"
-    let session = initSession user code pass
-    evalStateT run session
-  where
-    run = do
-      login
+    flip evalStateT emptySession $ do
+      login user code pass
+      Just accOwn  <- use sessionAccountOwner
       Just accNum  <- use sessionAccountNumber
       Just accName <- use sessionAccountName
       Just accBal  <- use sessionAccountBalance
-      liftIO . putStrLn $ "Account number:   " ++ accNum
-      liftIO . putStrLn $ "Account name:     " ++ accName
-      liftIO . putStrLn $ "Account balance:  " ++ accBal
+      liftIO $ do
+        putMark
+        putStrLn ("Account owner:    " ++ accOwn)
+        putStrLn ("Account number:   " ++ accNum)
+        putStrLn ("Account name:     " ++ accName)
+        putStrLn ("Account balance:  " ++ accBal)
+        putMark
+      res <- downloadTransactions
+      liftIO $ do
+        Lbs.putStr res
+        putMark
+      logout
+  where
+    putMark = putStrLn (replicate 80 '-')
 
 --------------------------------------------------------------------------------
