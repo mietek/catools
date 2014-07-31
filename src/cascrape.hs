@@ -24,11 +24,11 @@ import qualified Text.HTML.TagSoup as S
 
 data SessionState = SessionState
     { _sessionCookies        :: H.CookieJar
-    , _sessionToken          :: Maybe String
-    , _sessionAccountOwner   :: Maybe String
-    , _sessionAccountNumber  :: Maybe String
-    , _sessionAccountName    :: Maybe String
-    , _sessionAccountBalance :: Maybe String
+    , _sessionToken          :: Maybe ByteString
+    , _sessionAccountOwner   :: Maybe ByteString
+    , _sessionAccountNumber  :: Maybe ByteString
+    , _sessionAccountName    :: Maybe ByteString
+    , _sessionAccountBalance :: Maybe ByteString
     }
 
 makeLenses ''SessionState
@@ -73,10 +73,10 @@ main = do
       Just accBal  <- use sessionAccountBalance
       liftIO $ do
         putMark
-        putStrLn ("Account owner:    " ++ accOwn)
-        putStrLn ("Account number:   " ++ accNum)
-        putStrLn ("Account name:     " ++ accName)
-        putStrLn ("Account balance:  " ++ accBal)
+        Lbs.putStrLn (Lbs.append "Account owner:    " accOwn)
+        Lbs.putStrLn (Lbs.append "Account number:   " accNum)
+        Lbs.putStrLn (Lbs.append "Account name:     " accName)
+        Lbs.putStrLn (Lbs.append "Account balance:  " accBal)
         putMark
       res <- downloadTransactions
       liftIO $ do
@@ -113,10 +113,10 @@ login user code pass = do
         return tags'
       else
         return tags3
-    let accOwn  = Lbs.unpack (fetchTagTextAfter tags4 3 ownTag)
-        accNum  = Lbs.unpack (fetchTagValue tags4 accTag)
-        accName = Lbs.unpack (fetchTagTextAfter tags4 8 accTag)
-        accBal  = Lbs.unpack (fetchTagTextAfter tags4 12 accTag)
+    let accOwn  = fetchTagTextAfter tags4 3 ownTag
+        accNum  = fetchTagValue tags4 accTag
+        accName = fetchTagTextAfter tags4 8 accTag
+        accBal  = fetchTagTextAfter tags4 12 accTag
     sessionAccountOwner   .= Just accOwn
     sessionAccountNumber  .= Just accNum
     sessionAccountName    .= Just accName
@@ -179,7 +179,7 @@ postWithSession url params = do
     res <- liftIO (postWith opts url tokParams)
     let tags = parseTags (res ^. responseBody)
     sessionCookies .= res ^. responseCookieJar
-    sessionToken   .= Lbs.unpack `fmap` findTagValue tags tokTag
+    sessionToken   .= findTagValue tags tokTag
     return (res, tags)
   where
     tokTag = "<input type=hidden name=Trxn>"
