@@ -20,10 +20,13 @@ executable cascrape
   default-language:       Haskell2010
   build-depends:            base >= 4.6 && < 4.8
                           , bytestring
+                          , Decimal
                           , http-client
                           , lens
                           , mtl
+                          , old-locale
                           , tagsoup
+                          , time
                           , wreq
   ghc-options:            -Wall
                           -O2
