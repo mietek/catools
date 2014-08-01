@@ -9,7 +9,7 @@ module Main (main) where
 import Control.Applicative ((<$>))
 import Control.Monad (when)
 import Control.Monad.State (StateT, evalStateT, liftIO)
-import Control.Lens ((.=), (^.), (<~), makeLenses, set, use)
+import Control.Lens ((&), (.=), (.~), (<~), (^.), makeLenses, use)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Char (isDigit)
 import Data.Decimal (Decimal)
@@ -150,7 +150,7 @@ getTransactionsAsCsv fromDate toDate = do
 emptySession :: SessionState
 emptySession =
     SessionState
-      { _cookieJar = createCookieJar []
+      { _cookieJar      = createCookieJar []
       , _responseBody   = Lbs.empty
       , _responseTags   = []
       , _responseToken  = Lbs.empty
@@ -164,7 +164,7 @@ postWithSession :: String -> [FormParam] -> Session ()
 postWithSession url params = do
     jar   <- use cookieJar
     token <- use responseToken
-    let opts = set Wreq.cookies jar Wreq.defaults
+    let opts = Wreq.defaults & Wreq.cookies .~ jar
     response <- liftIO (Wreq.postWith opts url (("Trxn" := token) : params))
     cookieJar    .= response ^. Wreq.responseCookieJar
     responseBody .= response ^. Wreq.responseBody
