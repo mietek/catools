@@ -21,7 +21,7 @@ parse p str =
       (res, _) : _ ->
         res
       _ ->
-        error ("parse: unexpected format: " ++ str)
+        error ("parse: unexpected format: " ++ show str)
   where
     p' = do
       res <- p
@@ -126,13 +126,12 @@ visaDetail = do
       skipSpace
       return cur
     date <- visaDate
-    (rate, fee) <- option (0, 0) $ do
+    rate <- option 0 $ do
       skipString " Fx "
-      rate <- decimal
-      fee <- option 0 $ do
-        skipString "   Fee "
-        decimal
-      return (rate, fee)
+      decimal
+    fee <- option 0 $ do
+      skipString "   Fee "
+      decimal
     _ <- munch isPrint
     return $
       emptyTxnDetail
