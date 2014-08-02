@@ -15,8 +15,8 @@ import GHC.Generics (Generic)
 
 data FromTxn = FromTxn
     { _fromDate      :: !String
-    , _fromReference :: !String
     , _fromDetail    :: !String
+    , _fromReference :: !String
     , _fromAmount    :: !String
     , _fromBalance   :: !String
     }
@@ -30,8 +30,8 @@ emptyFromTxn :: FromTxn
 emptyFromTxn =
     FromTxn
       { _fromDate      = ""
-      , _fromReference = ""
       , _fromDetail    = ""
+      , _fromReference = ""
       , _fromAmount    = ""
       , _fromBalance   = ""
       }
@@ -100,8 +100,6 @@ instance Show TxnType
     show ServiceDebit      = "service debit"
 
 --------------------------------------------------------------------------------
-
-type TxnReference = (TxnType, Either String TxnDetail)
 
 data TxnDetail = TxnDetail
     { _detailParty     :: !String

@@ -24,9 +24,9 @@ main = do
     doTxns (decode NoHeader csv)
 
 doTxns :: Records FromTxn -> IO ()
-doTxns (Cons (Right trn) more) = do
+doTxns (Cons (Right txn) more) = do
     handle report $
-      L.putStr (encode ([doTxn trn]))
+      L.putStr (encode ([doTxn txn]))
     doTxns more
   where
     report err =
@@ -43,46 +43,45 @@ doTxns (Nil Nothing rest) =
 --------------------------------------------------------------------------------
 
 doTxn :: FromTxn -> ToTxn
-doTxn trn =
-    case parse P.reference (trn ^. fromReference) of
+doTxn txn =
+    case parse P.typeAndDetail (txn ^. fromDetail) of
       (typ, Right det) ->
-        doDetailTxn trn typ det
+        doDetailTxn txn typ det
       (typ, Left str) ->
-        doOtherTxn trn typ str
+        doOtherTxn txn typ str
 
 doDetailTxn :: FromTxn -> TxnType -> TxnDetail -> ToTxn
-doDetailTxn trn typ det =
+doDetailTxn txn typ det =
     emptyToTxn
       & toDate             .~ date
-      & toOriginalDate     .~ origDate
+      & toOriginalDate     .~ maybe date show (det ^. detailDate)
       & toType             .~ show typ
       & toParty            .~ filter (/= ',') (det ^. detailParty)
       & toReference        .~ ref
       & toTerritory        .~ filter (/= ',') (det ^. detailTerritory)
-      & toOriginalAmount   .~ origAmt
+      & toOriginalAmount   .~ amt
       & toOriginalCurrency .~ det ^. detailCurrency
-      & toAmount           .~ trn ^. fromAmount
-      & toBalance          .~ trn ^. fromBalance
+      & toAmount           .~ txn ^. fromAmount
+      & toBalance          .~ txn ^. fromBalance
   where
-    date     = show (parse P.shortDate (trn ^. fromDate))
-    origDate = maybe date show (det ^. detailDate)
-    ref      = detRef ++ if null detRef || null refRef then "" else " " ++ refRef
-    detRef   = det ^. detailReference
-    refRef   = trn ^. fromDetail
-    detAmt   = det ^. detailAmount
-    origAmt  = if detAmt /= 0 then show detAmt else ""
+    date   = show (parse P.shortDate (txn ^. fromDate))
+    ref    = detRef ++ if null detRef || null txnRef then "" else " " ++ txnRef
+    txnRef = txn ^. fromReference
+    detRef = det ^. detailReference
+    amt    = if detAmt /= 0 then show detAmt else ""
+    detAmt = det ^. detailAmount
 
 doOtherTxn :: FromTxn -> TxnType -> String -> ToTxn
-doOtherTxn trn typ str =
+doOtherTxn txn typ str =
     emptyToTxn
       & toDate         .~ date
       & toOriginalDate .~ date
       & toType         .~ show typ
       & toParty        .~ filter (/= ',') str
-      & toReference    .~ filter (/= ',') (trn ^. fromDetail)
-      & toAmount       .~ trn ^. fromAmount
-      & toBalance      .~ trn ^. fromBalance
+      & toReference    .~ filter (/= ',') (txn ^. fromReference)
+      & toAmount       .~ txn ^. fromAmount
+      & toBalance      .~ txn ^. fromBalance
   where
-    date = show (parse P.shortDate (trn ^. fromDate))
+    date = show (parse P.shortDate (txn ^. fromDate))
 
 --------------------------------------------------------------------------------
