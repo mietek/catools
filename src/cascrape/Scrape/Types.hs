@@ -27,10 +27,6 @@ class (Functor m, MonadState s m) => HasResponseTags s m | m -> s
 
 --------------------------------------------------------------------------------
 
-type Foo1 s m = StateT s m
-type Foo2 m = StateT SessionState m
-type Foo3 = StateT SessionState IO
-
 type Session = StateT SessionState IO
 
 data SessionState = SessionState
