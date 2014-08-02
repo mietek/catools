@@ -16,7 +16,8 @@ To run:
     export CA_USER_NAME=...
     export CA_SECRET_ACCESS_CODE=...
     export CA_SECRET_PASSWORD=...
-    cabal run -- 2014-07-01 2014-07-31
+    cabal run cascrape -- 2014-07-01 2014-07-31 >2014-07.csv
+    cabal run caparse <2014-07.csv | sed 's/,,/, ,/g;s/,,/, ,/g' | column -s, -t
 
 Meta
 ----
