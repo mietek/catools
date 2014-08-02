@@ -22,9 +22,19 @@ data FromTransaction = FromTransaction
     }
   deriving (Generic, Show)
 
+makeLenses ''FromTransaction
+
 instance FromRecord FromTransaction
 
-makeLenses ''FromTransaction
+emptyFromTransaction :: FromTransaction
+emptyFromTransaction =
+    FromTransaction
+      { _fromDate      = ""
+      , _fromReference = ""
+      , _fromDetail    = ""
+      , _fromAmount    = ""
+      , _fromBalance   = ""
+      }
 
 --------------------------------------------------------------------------------
 
@@ -42,13 +52,26 @@ data ToTransaction = ToTransaction
     }
   deriving (Generic, Show)
 
-instance ToRecord ToTransaction
-
 makeLenses ''ToTransaction
 
---------------------------------------------------------------------------------
+instance ToRecord ToTransaction
 
-type TransactionReference = (TransactionType, Either String TransactionDetail)
+emptyToTransaction :: ToTransaction
+emptyToTransaction =
+    ToTransaction
+      { _toDate             = ""
+      , _toOriginalDate     = ""
+      , _toType             = ""
+      , _toParty            = ""
+      , _toReference        = ""
+      , _toTerritory        = ""
+      , _toOriginalAmount   = ""
+      , _toOriginalCurrency = ""
+      , _toAmount           = ""
+      , _toBalance          = ""
+      }
+
+--------------------------------------------------------------------------------
 
 data TransactionType =
       Credit
@@ -63,19 +86,6 @@ data TransactionType =
     | ServiceDebit
   deriving (Eq)
 
-data TransactionDetail = TransactionDetail
-    { _detailParty     :: !String
-    , _detailCode      :: !String
-    , _detailReference :: !String
-    , _detailTerritory :: !String
-    , _detailAmount    :: !Decimal
-    , _detailCurrency  :: !String
-    , _detailDate      :: !(Maybe Day)
-    , _detailRate      :: !Decimal
-    , _detailFee       :: !Decimal
-    }
-  deriving (Show)
-
 instance Show TransactionType
   where
     show Credit            = "credit"
@@ -89,10 +99,27 @@ instance Show TransactionType
     show RecurringDebit    = "recurring debit"
     show ServiceDebit      = "service debit"
 
+--------------------------------------------------------------------------------
+
+type TransactionReference = (TransactionType, Either String TransactionDetail)
+
+data TransactionDetail = TransactionDetail
+    { _detailParty     :: !String
+    , _detailCode      :: !String
+    , _detailReference :: !String
+    , _detailTerritory :: !String
+    , _detailAmount    :: !Decimal
+    , _detailCurrency  :: !String
+    , _detailDate      :: !(Maybe Day)
+    , _detailRate      :: !Decimal
+    , _detailFee       :: !Decimal
+    }
+  deriving (Show)
+
 makeLenses ''TransactionDetail
 
-emptyDetail :: TransactionDetail
-emptyDetail =
+emptyTransactionDetail :: TransactionDetail
+emptyTransactionDetail =
     TransactionDetail
       { _detailParty     = ""
       , _detailCode      = ""

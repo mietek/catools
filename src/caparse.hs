@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Exception (SomeException, handle)
-import Control.Lens ((^.))
+import Control.Lens ((&), (.~), (^.))
 import Data.Csv (encode)
 import Data.Csv.Streaming (HasHeader (NoHeader), Records (Nil, Cons), decode)
 import System.IO (hPutStrLn, stderr)
@@ -52,18 +52,17 @@ doRow trn =
 
 doDetailRow :: FromTransaction -> TransactionType -> TransactionDetail -> ToTransaction
 doDetailRow trn typ det =
-    ToTransaction
-      { _toDate             = date
-      , _toOriginalDate     = origDate
-      , _toType             = show typ
-      , _toParty            = filter (/= ',') (det ^. detailParty)
-      , _toReference        = ref
-      , _toTerritory        = filter (/= ',') (det ^. detailTerritory)
-      , _toOriginalAmount   = origAmt
-      , _toOriginalCurrency = det ^. detailCurrency
-      , _toAmount           = trn ^. fromAmount
-      , _toBalance          = trn ^. fromBalance
-      }
+    emptyToTransaction
+      & toDate             .~ date
+      & toOriginalDate     .~ origDate
+      & toType             .~ show typ
+      & toParty            .~ filter (/= ',') (det ^. detailParty)
+      & toReference        .~ ref
+      & toTerritory        .~ filter (/= ',') (det ^. detailTerritory)
+      & toOriginalAmount   .~ origAmt
+      & toOriginalCurrency .~ det ^. detailCurrency
+      & toAmount           .~ trn ^. fromAmount
+      & toBalance          .~ trn ^. fromBalance
   where
     date     = show (parse P.shortDate (trn ^. fromDate))
     origDate = maybe date show (det ^. detailDate)
@@ -75,18 +74,14 @@ doDetailRow trn typ det =
 
 doOtherRow :: FromTransaction -> TransactionType -> String -> ToTransaction
 doOtherRow trn typ str =
-    ToTransaction
-      { _toDate             = date
-      , _toOriginalDate     = date
-      , _toType             = show typ
-      , _toParty            = filter (/= ',') str
-      , _toReference        = filter (/= ',') (trn ^. fromDetail)
-      , _toTerritory        = ""
-      , _toOriginalAmount   = ""
-      , _toOriginalCurrency = ""
-      , _toAmount           = trn ^. fromAmount
-      , _toBalance          = trn ^. fromBalance
-      }
+    emptyToTransaction
+      & toDate         .~ date
+      & toOriginalDate .~ date
+      & toType         .~ show typ
+      & toParty        .~ filter (/= ',') str
+      & toReference    .~ filter (/= ',') (trn ^. fromDetail)
+      & toAmount       .~ trn ^. fromAmount
+      & toBalance      .~ trn ^. fromBalance
   where
     date = show (parse P.shortDate (trn ^. fromDate))
 

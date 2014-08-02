@@ -45,10 +45,12 @@ data SessionState = SessionState
 
 makeLenses ''SessionState
 
---------------------------------------------------------------------------------
+instance HasResponseTags SessionState Session
+  where
+    useResponseTags = use responseTags
 
-emptySession :: SessionState
-emptySession =
+emptySessionState :: SessionState
+emptySessionState =
     SessionState
       { _userName         = ""
       , _secretAccessCode = ""
@@ -62,9 +64,5 @@ emptySession =
       , _accountName      = L.empty
       , _currentBalance   = 0
       }
-
-instance HasResponseTags SessionState Session
-  where
-    useResponseTags = use responseTags
 
 --------------------------------------------------------------------------------

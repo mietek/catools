@@ -135,7 +135,7 @@ visaDetail = do
       return (rate, fee)
     _ <- munch isPrint
     return $
-      emptyDetail
+      emptyTransactionDetail
         & detailParty     .~ party
         & detailCode      .~ code
         & detailReference .~ ref
@@ -166,7 +166,7 @@ foreignCreditDetail = do
     skipString ": Buy rate "
     rate <- decimal
     return $
-      emptyDetail
+      emptyTransactionDetail
         & detailParty    .~ party
         & detailAmount   .~ amt
         & detailCurrency .~ cur

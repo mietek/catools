@@ -68,7 +68,7 @@ getOpts =
 
 runSession :: String -> String -> String -> Session a -> IO a
 runSession user code pass act = do
-    let s = emptySession
+    let s = emptySessionState
           & userName         .~ user
           & secretAccessCode .~ code
           & secretPassword   .~ pass
