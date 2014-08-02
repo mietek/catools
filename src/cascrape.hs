@@ -9,43 +9,39 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Main (main) where
+module Main where
 
-import Control.Applicative ((<$>), pure)
+import Control.Applicative ((<$>), (<*>), empty)
 import Control.Exception (SomeException, handle)
 import Control.Monad (when)
 import Control.Monad.State (StateT, evalStateT, liftIO)
 import Control.Lens ((&), (.=), (.~), (<~), (^.), makeLenses, use)
 import Data.ByteString.Lazy.Char8 (ByteString)
-import Data.Char (isDigit, isSpace)
-import Data.Csv (FromField, FromRecord, ToField, ToRecord, encode, parseField, toField)
+import Data.Char (isDigit)
+import Data.Csv ((.!), FromRecord, ToRecord, encode, parseRecord)
 import Data.Csv.Streaming (HasHeader (NoHeader), Records (Nil, Cons), decode)
 import Data.Decimal (Decimal)
+import Data.List.Split (splitOn)
 import Data.Maybe (isJust, listToMaybe)
-import Data.Time.Clock (UTCTime)
+import Data.Time.Calendar (Day)
 import GHC.Generics (Generic)
 import Network.HTTP.Client (CookieJar, createCookieJar)
 import Network.Wreq (FormParam ((:=)))
 import System.Environment (getArgs, getEnv, getProgName)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, hPutStrLn, stderr)
-import System.Locale (defaultTimeLocale)
 import Text.HTML.TagSoup ((~/=), fromAttrib, fromTagText, parseTags)
 
-import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Time.Format as T
+import qualified Data.Vector as V
 import qualified Network.Wreq as W
 import qualified Text.HTML.TagSoup as S
 
 --------------------------------------------------------------------------------
 
-newtype Amount = Amount Decimal
-  deriving (Eq, Num, Ord)
-
-newtype Date = Date UTCTime
-
 type Tag = S.Tag ByteString
+
+type Session a = StateT SessionState IO a
 
 data SessionState = SessionState
     { _userName         :: !String
@@ -58,23 +54,51 @@ data SessionState = SessionState
     , _accountOwner     :: !ByteString
     , _accountNumber    :: !ByteString
     , _accountName      :: !ByteString
-    , _currentBalance   :: !Amount
+    , _currentBalance   :: !Decimal
     }
 
 makeLenses ''SessionState
 
-type Session a = StateT SessionState IO a
+--------------------------------------------------------------------------------
 
 data Transaction = Transaction
-    { _transactionDate      :: !Date
+    { _transactionDate      :: !ByteString
     , _transactionReference :: !ByteString
     , _transactionDetails   :: !ByteString
-    , _transactionAmount    :: !Amount
-    , _transactionBalance   :: !Amount
+    , _transactionAmount    :: !ByteString
+    , _transactionBalance   :: !ByteString
     }
   deriving Generic
 
 makeLenses ''Transaction
+
+instance FromRecord Transaction
+  where
+    parseRecord v
+        | V.length v == 5 =
+            Transaction <$>
+                  v .! 0
+              <*> v .! 1
+              <*> v .! 2
+              <*> v .! 3
+              <*> v .! 4
+        | otherwise =
+              empty
+
+instance ToRecord Transaction
+
+processTransactions :: Records Transaction -> IO ()
+processTransactions (Cons (Right tr) more) = do
+    L.putStr (encode [tr])
+    processTransactions more
+processTransactions (Cons (Left err) more) = do
+    hPutStrLn stderr ("processTransactions: " ++ err)
+    processTransactions more
+processTransactions (Nil (Just err) rest) = do
+    hPutStrLn stderr ("processTransactions: " ++ err)
+    L.putStrLn rest
+processTransactions (Nil Nothing rest) =
+    L.putStrLn rest
 
 --------------------------------------------------------------------------------
 
@@ -84,7 +108,7 @@ main = do
     csv <- runInSession user code pass (getTransactionsAsCsv from to)
     processTransactions (decode NoHeader csv)
 
-getOpts :: IO (String, String, String, Date, Date)
+getOpts :: IO (String, String, String, Day, Day)
 getOpts =
     handle showUsage $
       getArgs >>= \case
@@ -109,60 +133,6 @@ getOpts =
         , "  CA_SECRET_PASSWORD     Cater Allen secret password"
         ]
       exitFailure
-
---------------------------------------------------------------------------------
-
-instance Read Amount where
-    readsPrec _ str =
-        let (dirty, rest) = break isSpace str
-            clean = filter (\c -> isDigit c || c == '-' || c == '.') dirty
-        in [(Amount (read clean), rest)]
-
-instance Show Amount where
-    show (Amount amt) =
-        show amt
-
-instance FromField Amount where
-    parseField str =
-        pure (read (S.unpack str))
-
-instance ToField Amount where
-    toField amt =
-        S.pack (show amt)
-
-instance Read Date where
-    readsPrec _ str =
-        let (part, rest) = splitAt 10 str
-        in [(Date (readTime "%Y-%m-%d" part), rest)]
-
-instance Show Date where
-    show (Date date) =
-        formatTime "%Y-%m-%d" date
-
-instance FromField Date where
-    parseField str =
-        pure (Date (readTime "%d%b%Y" (S.unpack str)))
-
-instance ToField Date where
-    toField date =
-        S.pack (show date)
-
-instance FromRecord Transaction
-
-instance ToRecord Transaction
-
-processTransactions :: Records Transaction -> IO ()
-processTransactions (Cons (Right tr) more) = do
-    L.putStr (encode [tr])
-    processTransactions more
-processTransactions (Cons (Left err) more) = do
-    hPutStrLn stderr ("processTransactions: " ++ err)
-    processTransactions more
-processTransactions (Nil (Just err) rest) = do
-    hPutStrLn stderr ("processTransactions: " ++ err)
-    L.putStrLn rest
-processTransactions (Nil Nothing rest) =
-    L.putStrLn rest
 
 --------------------------------------------------------------------------------
 
@@ -201,7 +171,8 @@ login = do
     accountOwner   <~ scrapeTagTextAfter 3 ownerTag
     accountNumber  <~ fromAttrib "value" <$> scrapeTag accountTag
     accountName    <~ scrapeTagTextAfter 8 accountTag
-    currentBalance <~ read . L.unpack <$> scrapeTagTextAfter 12 accountTag
+    curBal <- L.unpack <$> scrapeTagTextAfter 12 accountTag
+    currentBalance .= read (filter (\c -> isDigit c || c == '.') curBal)
   where
     continueTag     = "<input type=submit name=Menu value=Continue>"
     ownerTag        = "<div id=name_right_header_border"
@@ -215,8 +186,8 @@ logout = do
       [ "Menu" := ("Log Out" :: String)
       ]
 
-getTransactionsAsCsv :: Date -> Date -> Session ByteString
-getTransactionsAsCsv (Date from) (Date to) = do
+getTransactionsAsCsv :: Day -> Day -> Session ByteString
+getTransactionsAsCsv from to = do
     accNum <- use accountNumber
     access
       [ "Acc" := accNum
@@ -226,18 +197,21 @@ getTransactionsAsCsv (Date from) (Date to) = do
       ]
     access
       [ "Menu"       := ("Accept" :: String)
-      , "fDay"       := formatTime "%d" from
-      , "fMonth"     := formatTime "%m" from
-      , "fYear"      := formatTime "%Y" from
-      , "tDay"       := formatTime "%d" to
-      , "tMonth"     := formatTime "%m" to
-      , "tYear"      := formatTime "%Y" to
+      , "fDay"       := fd
+      , "fMonth"     := fm
+      , "fYear"      := fy
+      , "tDay"       := td
+      , "tMonth"     := tm
+      , "tYear"      := ty
       , "FileFormat" := ("EXCEL" :: String)
       ]
     access
       [ "Menu" := ("Download" :: String)
       ]
     use responseBody
+  where
+    [fy, fm, fd] = splitOn "-" (show from)
+    [ty, tm, td] = splitOn "-" (show to)
 
 --------------------------------------------------------------------------------
 
@@ -318,16 +292,6 @@ tryScrapeTagAfter n like = do
     return (listToMaybe (drop n (dropWhile (~/= like) tags)))
 
 --------------------------------------------------------------------------------
-
-readTime :: String -> String -> UTCTime
-readTime fmt str =
-    case T.parseTime defaultTimeLocale fmt str of
-      Just time -> time
-      Nothing   -> error (fmt ++ ": readTime: unexpected format")
-
-formatTime :: String -> UTCTime -> String
-formatTime fmt t =
-    T.formatTime defaultTimeLocale fmt t
 
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM predAct act =

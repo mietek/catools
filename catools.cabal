@@ -25,7 +25,7 @@ executable cascrape
                           , http-client
                           , lens
                           , mtl
-                          , old-locale
+                          , split
                           , tagsoup
                           , time
                           , vector
