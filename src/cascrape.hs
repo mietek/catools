@@ -1,131 +1,61 @@
 --------------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 module Main where
 
-import Control.Applicative ((<$>), (<*>), empty)
+import Control.Applicative ((<$>))
 import Control.Exception (SomeException, handle)
 import Control.Monad (when)
-import Control.Monad.State (StateT, evalStateT, liftIO)
-import Control.Lens ((&), (.=), (.~), (<~), (^.), makeLenses, use)
+import Control.Monad.State (evalStateT, liftIO)
+import Control.Lens ((&), (.=), (.~), (<~), (^.), use)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Char (isDigit)
-import Data.Csv ((.!), FromRecord, ToRecord, encode, parseRecord)
-import Data.Csv.Streaming (HasHeader (NoHeader), Records (Nil, Cons), decode)
-import Data.Decimal (Decimal)
 import Data.List.Split (splitOn)
 import Data.Maybe (isJust, listToMaybe)
 import Data.Time.Calendar (Day)
-import GHC.Generics (Generic)
-import Network.HTTP.Client (CookieJar, createCookieJar)
 import Network.Wreq (FormParam ((:=)))
-import System.Environment (getArgs, getEnv, getProgName)
+import System.Environment (getArgs, getEnv)
 import System.Exit (exitFailure)
-import System.IO (hPutStr, hPutStrLn, stderr)
+import System.IO (hPutStr, stderr)
 import Text.HTML.TagSoup ((~/=), fromAttrib, fromTagText, parseTags)
 
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Vector as V
 import qualified Network.Wreq as W
-import qualified Text.HTML.TagSoup as S
 
---------------------------------------------------------------------------------
-
-type Tag = S.Tag ByteString
-
-type Session a = StateT SessionState IO a
-
-data SessionState = SessionState
-    { _userName         :: !String
-    , _secretAccessCode :: !String
-    , _secretPassword   :: !String
-    , _cookieJar        :: !CookieJar
-    , _responseBody     :: !ByteString
-    , _responseTags     :: ![Tag]
-    , _responseToken    :: !ByteString
-    , _accountOwner     :: !ByteString
-    , _accountNumber    :: !ByteString
-    , _accountName      :: !ByteString
-    , _currentBalance   :: !Decimal
-    }
-
-makeLenses ''SessionState
-
---------------------------------------------------------------------------------
-
-data Transaction = Transaction
-    { _transactionDate      :: !ByteString
-    , _transactionReference :: !ByteString
-    , _transactionDetails   :: !ByteString
-    , _transactionAmount    :: !ByteString
-    , _transactionBalance   :: !ByteString
-    }
-  deriving Generic
-
-makeLenses ''Transaction
-
-instance FromRecord Transaction
-  where
-    parseRecord v
-        | V.length v == 5 =
-            Transaction <$>
-                  v .! 0
-              <*> v .! 1
-              <*> v .! 2
-              <*> v .! 3
-              <*> v .! 4
-        | otherwise =
-              empty
-
-instance ToRecord Transaction
-
-processTransactions :: Records Transaction -> IO ()
-processTransactions (Cons (Right tr) more) = do
-    L.putStr (encode [tr])
-    processTransactions more
-processTransactions (Cons (Left err) more) = do
-    hPutStrLn stderr ("processTransactions: " ++ err)
-    processTransactions more
-processTransactions (Nil (Just err) rest) = do
-    hPutStrLn stderr ("processTransactions: " ++ err)
-    L.putStrLn rest
-processTransactions (Nil Nothing rest) =
-    L.putStrLn rest
+import Scrape.Types
 
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
     (user, code, pass, from, to) <- getOpts
-    csv <- runInSession user code pass (getTransactionsAsCsv from to)
-    processTransactions (decode NoHeader csv)
+    let s = initSession user code pass
+    csv <- runWithSession s (getTransactionsAsCsv from to)
+    L.putStrLn csv
 
 getOpts :: IO (String, String, String, Day, Day)
 getOpts =
-    handle showUsage $
+    handle exitWithUsage $
       getArgs >>= \case
-        [fromDate, toDate] -> do
+        [from, to] -> do
           user <- getEnv "CA_USER_NAME"
           code <- getEnv "CA_SECRET_ACCESS_CODE"
           pass <- getEnv "CA_SECRET_PASSWORD"
-          return (user, code, pass, read fromDate, read toDate)
+          return (user, code, pass, read from, read to)
         _ ->
-          error "FROM_DATE TO_DATE: getArgs: unexpected format"
+          error "FROM_DATE TO_DATE: getOpts: unexpected format"
   where
-    showUsage err = do
-      name <- getProgName
+    exitWithUsage err = do
       hPutStr stderr $ unlines
         [ show (err :: SomeException)
         , ""
-        , "Usage: " ++ name ++ " YYYY-MM-DD YYYY-MM-DD"
+        , "Usage: cascrape FROM_DATE TO_DATE"
+        , ""
+        , "Arguments:"
+        , "  FROM_DATE  Transactions start (YYYY-MM-DD)"
+        , "  TO_DATE    Transactions end   (YYYY-MM-DD)"
         , ""
         , "Environment variables:"
         , "  CA_USER_NAME           Cater Allen user name"
@@ -136,9 +66,16 @@ getOpts =
 
 --------------------------------------------------------------------------------
 
-runInSession :: String -> String -> String -> Session a -> IO a
-runInSession user code pass act =
-    flip evalStateT (initState user code pass) $ do
+initSession :: String -> String -> String -> SessionState
+initSession user code pass =
+    emptySession
+      & userName         .~ user
+      & secretAccessCode .~ code
+      & secretPassword   .~ pass
+
+runWithSession :: SessionState -> Session a -> IO a
+runWithSession s act =
+    flip evalStateT s $ do
       login
       res <- act
       logout
@@ -223,22 +160,6 @@ accessUrl :: String
 accessUrl =
     baseUrl ++ "/WebAccess.dll"
 
-initState :: String -> String -> String -> SessionState
-initState user code pass =
-    SessionState
-      { _userName         = user
-      , _secretAccessCode = code
-      , _secretPassword   = pass
-      , _cookieJar        = createCookieJar []
-      , _responseBody     = L.empty
-      , _responseTags     = []
-      , _responseToken    = L.empty
-      , _accountOwner     = L.empty
-      , _accountNumber    = L.empty
-      , _accountName      = L.empty
-      , _currentBalance   = 0
-      }
-
 access :: [FormParam] -> Session ()
 access params = do
     jar   <- use cookieJar
@@ -266,29 +187,29 @@ scrapeSecret challengeTag secret = do
 
 --------------------------------------------------------------------------------
 
-scrapeTag :: String -> Session Tag
+scrapeTag :: (HasResponseTags s m) => String -> m Tag
 scrapeTag like =
     tryScrapeTag like >>= \case
       Just tag -> return tag
       Nothing  -> error (like ++ ": scrapeTag: not found")
 
-scrapeTagTextAfter :: Int -> String -> Session ByteString
+scrapeTagTextAfter :: (HasResponseTags s m) => Int -> String -> m ByteString
 scrapeTagTextAfter n like =
     fromTagText <$> scrapeTagAfter n like
 
-scrapeTagAfter :: Int -> String -> Session Tag
+scrapeTagAfter :: (HasResponseTags s m) => Int -> String -> m Tag
 scrapeTagAfter n like =
     tryScrapeTagAfter n like >>= \case
       Just tag -> return tag
       Nothing  -> error (like ++ ": scrapeTagAfter: not found")
 
-tryScrapeTag :: String -> Session (Maybe Tag)
+tryScrapeTag :: (HasResponseTags s m) => String -> m (Maybe Tag)
 tryScrapeTag like =
     tryScrapeTagAfter 0 like
 
-tryScrapeTagAfter :: Int -> String -> Session (Maybe Tag)
+tryScrapeTagAfter :: (HasResponseTags s m) => Int -> String -> m (Maybe Tag)
 tryScrapeTagAfter n like = do
-    tags <- use responseTags
+    tags <- useResponseTags
     return (listToMaybe (drop n (dropWhile (~/= like) tags)))
 
 --------------------------------------------------------------------------------
