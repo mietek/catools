@@ -2,7 +2,7 @@
 
 name:                   catools
 version:                0.0.1
-synopsis:               TODO
+synopsis:               Set of tools for interfacing with Cater Allen.
 description:            TODO
 homepage:               https://github.com/mietek/catools
 bug-reports:            https://github.com/mietek/catools/issues

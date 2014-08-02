@@ -3,7 +3,7 @@
 CA Tools
 ========
 
-TODO
+This is a set of tools for interfacing with Cater Allen.
 
 To build:
 
