@@ -33,18 +33,18 @@ shortDate = do
 shortMonth :: ReadP Int
 shortMonth =
     choice
-      [ istring "Jan" >> return 1
-      , istring "Feb" >> return 2
-      , istring "Mar" >> return 3
-      , istring "Apr" >> return 4
-      , istring "May" >> return 5
-      , istring "Jun" >> return 6
-      , istring "Jul" >> return 7
-      , istring "Aug" >> return 8
-      , istring "Sep" >> return 9
-      , istring "Oct" >> return 10
-      , istring "Nov" >> return 11
-      , istring "Dec" >> return 12
+      [ "Jan" ~> 1
+      , "Feb" ~> 2
+      , "Mar" ~> 3
+      , "Apr" ~> 4
+      , "May" ~> 5
+      , "Jun" ~> 6
+      , "Jul" ~> 7
+      , "Aug" ~> 8
+      , "Sep" ~> 9
+      , "Oct" ~> 10
+      , "Nov" ~> 11
+      , "Dec" ~> 12
       ]
 
 --------------------------------------------------------------------------------
@@ -107,8 +107,8 @@ unsignedIntegerWithCommas = do
 
 --------------------------------------------------------------------------------
 
-istring :: String -> ReadP String
-istring this = do
+caseInsensitiveString :: String -> ReadP String
+caseInsensitiveString this = do
     s <- look
     scan this s
   where
@@ -120,8 +120,9 @@ istring this = do
     scan _ _
         = pfail
 
-(~>) :: String -> String -> ReadP String
-from ~> to =
-    istring from >> return to
+(~>) :: String -> a -> ReadP a
+str ~> val = do
+    _ <- caseInsensitiveString str
+    return val
 
 --------------------------------------------------------------------------------
