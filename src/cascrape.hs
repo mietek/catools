@@ -13,17 +13,18 @@ import Control.Lens ((&), (.=), (.~), (<~), (^.), use)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Char (isDigit)
 import Data.List.Split (splitOn)
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust)
 import Data.Time.Calendar (Day)
 import Network.Wreq (FormParam ((:=)))
 import System.Environment (getArgs, getEnv)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, stderr)
-import Text.HTML.TagSoup ((~/=), fromAttrib, fromTagText, parseTags)
+import Text.HTML.TagSoup (fromAttrib, parseTags)
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Network.Wreq as W
 
+import Scrape
 import Scrape.Types
 
 --------------------------------------------------------------------------------
@@ -31,9 +32,8 @@ import Scrape.Types
 main :: IO ()
 main = do
     (user, code, pass, from, to) <- getOpts
-    let s = initSession user code pass
-    csv <- runWithSession s (getTransactionsAsCsv from to)
-    L.putStrLn csv
+    csv <- runSession user code pass (getTransactionsAsCsv from to)
+    L.putStr csv
 
 getOpts :: IO (String, String, String, Day, Day)
 getOpts =
@@ -66,20 +66,19 @@ getOpts =
 
 --------------------------------------------------------------------------------
 
-initSession :: String -> String -> String -> SessionState
-initSession user code pass =
-    emptySession
-      & userName         .~ user
-      & secretAccessCode .~ code
-      & secretPassword   .~ pass
-
-runWithSession :: SessionState -> Session a -> IO a
-runWithSession s act =
+runSession :: String -> String -> String -> Session a -> IO a
+runSession user code pass act = do
+    let s = emptySession
+          & userName         .~ user
+          & secretAccessCode .~ code
+          & secretPassword   .~ pass
     flip evalStateT s $ do
       login
       res <- act
       logout
       return res
+
+--------------------------------------------------------------------------------
 
 login :: Session ()
 login = do
@@ -87,7 +86,7 @@ login = do
     access []
     user <- use userName
     code <- use secretAccessCode
-    (c1, c2, c3) <- scrapeSecret codeChallenge code
+    (c1, c2, c3) <- splitSecretBy code codeTag
     access
       [ "UserID" := user
       , "pwd1"   := c1
@@ -95,7 +94,7 @@ login = do
       , "pwd3"   := c3
       ]
     pass <- use secretPassword
-    (p1, p2, p3) <- scrapeSecret passChallenge pass
+    (p1, p2, p3) <- splitSecretBy pass passTag
     access
       [ "pwd1" := p1
       , "pwd2" := p2
@@ -111,11 +110,11 @@ login = do
     curBal <- L.unpack <$> scrapeTagTextAfter 12 accountTag
     currentBalance .= read (filter (\c -> isDigit c || c == '.') curBal)
   where
-    continueTag     = "<input type=submit name=Menu value=Continue>"
-    ownerTag        = "<div id=name_right_header_border"
-    accountTag      = "<input type=submit name=Acc>"
-    codeChallenge n = "<label for=ipos" ++ show n ++ ">"
-    passChallenge n = "<label for=pos"  ++ show n ++ ">"
+    continueTag = "<input type=submit name=Menu value=Continue>"
+    ownerTag    = "<div id=name_right_header_border"
+    accountTag  = "<input type=submit name=Acc>"
+    codeTag n   = "<label for=ipos" ++ show n ++ ">"
+    passTag n   = "<label for=pos"  ++ show n ++ ">"
 
 logout :: Session ()
 logout = do
@@ -176,41 +175,14 @@ access params = do
   where
     tokenTag = "<input type=hidden name=Trxn>"
 
-scrapeSecret :: (Int -> String) -> String -> Session (String, String, String)
-scrapeSecret challengeTag secret = do
-    i1 <- readIndex <$> scrapeTagTextAfter 1 (challengeTag 1)
-    i2 <- readIndex <$> scrapeTagTextAfter 1 (challengeTag 2)
-    i3 <- readIndex <$> scrapeTagTextAfter 1 (challengeTag 3)
+splitSecretBy :: String -> (Int -> String) -> Session (String, String, String)
+splitSecretBy secret tag = do
+    i1 <- readIndex <$> scrapeTagTextAfter 1 (tag 1)
+    i2 <- readIndex <$> scrapeTagTextAfter 1 (tag 2)
+    i3 <- readIndex <$> scrapeTagTextAfter 1 (tag 3)
     return ([secret !! i1], [secret !! i2], [secret !! i3])
   where
     readIndex str = read (L.unpack str) - 1
-
---------------------------------------------------------------------------------
-
-scrapeTag :: (HasResponseTags s m) => String -> m Tag
-scrapeTag like =
-    tryScrapeTag like >>= \case
-      Just tag -> return tag
-      Nothing  -> error (like ++ ": scrapeTag: not found")
-
-scrapeTagTextAfter :: (HasResponseTags s m) => Int -> String -> m ByteString
-scrapeTagTextAfter n like =
-    fromTagText <$> scrapeTagAfter n like
-
-scrapeTagAfter :: (HasResponseTags s m) => Int -> String -> m Tag
-scrapeTagAfter n like =
-    tryScrapeTagAfter n like >>= \case
-      Just tag -> return tag
-      Nothing  -> error (like ++ ": scrapeTagAfter: not found")
-
-tryScrapeTag :: (HasResponseTags s m) => String -> m (Maybe Tag)
-tryScrapeTag like =
-    tryScrapeTagAfter 0 like
-
-tryScrapeTagAfter :: (HasResponseTags s m) => Int -> String -> m (Maybe Tag)
-tryScrapeTagAfter n like = do
-    tags <- useResponseTags
-    return (listToMaybe (drop n (dropWhile (~/= like) tags)))
 
 --------------------------------------------------------------------------------
 
