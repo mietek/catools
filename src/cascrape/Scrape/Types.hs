@@ -20,9 +20,9 @@ import qualified Text.HTML.TagSoup as S
 
 type Tag = S.Tag ByteString
 
-class (Functor m, MonadState s m) => HasResponseTags s m | m -> s
+class (Functor m, MonadState s m) => HasTags s m | m -> s
   where
-    useResponseTags :: m [Tag]
+    useTags :: m [Tag]
 
 --------------------------------------------------------------------------------
 
@@ -45,9 +45,9 @@ data SessionState = SessionState
 
 makeLenses ''SessionState
 
-instance HasResponseTags SessionState Session
+instance HasTags SessionState Session
   where
-    useResponseTags = use responseTags
+    useTags = use responseTags
 
 emptySessionState :: SessionState
 emptySessionState =

@@ -30,7 +30,7 @@ parse p str =
 
 --------------------------------------------------------------------------------
 
-reference :: ReadP TransactionReference
+reference :: ReadP TxnReference
 reference =
     choice
       [ credit
@@ -45,68 +45,68 @@ reference =
       , serviceDebit
       ]
 
-credit :: ReadP TransactionReference
+credit :: ReadP TxnReference
 credit = do
     skipString "Giro: "
     str <- munch1 isPrint
     return (Credit, Left str)
 
-debit :: ReadP TransactionReference
+debit :: ReadP TxnReference
 debit = do
     skipString "R/P to "
     str <- munch1 isPrint
     return (Debit, Left str)
 
-visaCredit :: ReadP TransactionReference
+visaCredit :: ReadP TxnReference
 visaCredit = do
     skipString "Visa Sales Credit "
     det <- visaDetail
     return (VisaCredit, Right det)
 
-visaDebit :: ReadP TransactionReference
+visaDebit :: ReadP TxnReference
 visaDebit = do
     skipString "Visa Sales "
     det <- visaDetail
     let amt = 0 - (det ^. detailAmount)
     return (VisaDebit, Right (det & detailAmount .~ amt))
 
-chequeCredit :: ReadP TransactionReference
+chequeCredit :: ReadP TxnReference
 chequeCredit = do
     skipString "Cheque Deposit"
     return (ChequeCredit, Left "")
 
-foreignCredit :: ReadP TransactionReference
+foreignCredit :: ReadP TxnReference
 foreignCredit = do
     skipString "TT b/o "
     det <- foreignCreditDetail
     return (ForeignCredit, Right det)
 
-freeForeignCredit :: ReadP TransactionReference
+freeForeignCredit :: ReadP TxnReference
 freeForeignCredit = do
     skipString "B/o "
     det <- foreignCreditDetail
     return (FreeForeignCredit, Right det)
 
-directDebit :: ReadP TransactionReference
+directDebit :: ReadP TxnReference
 directDebit = do
     skipString "DD to "
     str <- munch1 isPrint
     return (DirectDebit, Left str)
 
-recurringDebit :: ReadP TransactionReference
+recurringDebit :: ReadP TxnReference
 recurringDebit = do
     skipString "S/O to "
     str <- munch1 isPrint
     return (RecurringDebit, Left str)
 
-serviceDebit :: ReadP TransactionReference
+serviceDebit :: ReadP TxnReference
 serviceDebit = do
     skipString "Service Charge"
     return (ServiceDebit, Left "")
 
 --------------------------------------------------------------------------------
 
-visaDetail :: ReadP TransactionDetail
+visaDetail :: ReadP TxnDetail
 visaDetail = do
     party <- trim <$> count 25 (satisfy isPrint)
     skipSpace
@@ -135,7 +135,7 @@ visaDetail = do
       return (rate, fee)
     _ <- munch isPrint
     return $
-      emptyTransactionDetail
+      emptyTxnDetail
         & detailParty     .~ party
         & detailCode      .~ code
         & detailReference .~ ref
@@ -157,7 +157,7 @@ visaCurrency =
 
 --------------------------------------------------------------------------------
 
-foreignCreditDetail :: ReadP TransactionDetail
+foreignCreditDetail :: ReadP TxnDetail
 foreignCreditDetail = do
     party <- many1 (satisfy isPrint)
     skipSpaces
@@ -166,7 +166,7 @@ foreignCreditDetail = do
     skipString ": Buy rate "
     rate <- decimal
     return $
-      emptyTransactionDetail
+      emptyTxnDetail
         & detailParty    .~ party
         & detailAmount   .~ amt
         & detailCurrency .~ cur

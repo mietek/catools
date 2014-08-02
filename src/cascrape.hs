@@ -19,7 +19,7 @@ import Network.Wreq (FormParam ((:=)))
 import System.Environment (getArgs, getEnv)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, stderr)
-import Text.HTML.TagSoup (fromAttrib, parseTags)
+import Text.HTML.TagSoup (parseTags)
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Network.Wreq as W
@@ -32,7 +32,7 @@ import Scrape.Types
 main :: IO ()
 main = do
     (user, code, pass, from, to) <- getOpts
-    csv <- runSession user code pass (getTransactionsAsCsv from to)
+    csv <- runSession user code pass (getTxnsAsCsv from to)
     L.putStr csv
 
 getOpts :: IO (String, String, String, Day, Day)
@@ -54,8 +54,8 @@ getOpts =
         , "Usage: cascrape FROM_DATE TO_DATE"
         , ""
         , "Arguments:"
-        , "  FROM_DATE  Transactions start (YYYY-MM-DD)"
-        , "  TO_DATE    Transactions end   (YYYY-MM-DD)"
+        , "  FROM_DATE  First day of transactions (YYYY-MM-DD)"
+        , "  TO_DATE    Last day of transactions  (YYYY-MM-DD)"
         , ""
         , "Environment variables:"
         , "  CA_USER_NAME           Cater Allen user name"
@@ -104,10 +104,10 @@ login = do
       access
         [ "Menu" := ("Continue" :: String)
         ]
-    accountOwner   <~ scrapeTagTextAfter 3 ownerTag
-    accountNumber  <~ fromAttrib "value" <$> scrapeTag accountTag
-    accountName    <~ scrapeTagTextAfter 8 accountTag
-    curBal <- L.unpack <$> scrapeTagTextAfter 12 accountTag
+    accountOwner  <~ scrapeTextAfter 3 ownerTag
+    accountNumber <~ scrapeAttrib "value" accountTag
+    accountName   <~ scrapeTextAfter 8 accountTag
+    curBal <- L.unpack <$> scrapeTextAfter 12 accountTag
     currentBalance .= read (filter (\c -> isDigit c || c == '.') curBal)
   where
     continueTag = "<input type=submit name=Menu value=Continue>"
@@ -122,8 +122,8 @@ logout = do
       [ "Menu" := ("Log Out" :: String)
       ]
 
-getTransactionsAsCsv :: Day -> Day -> Session ByteString
-getTransactionsAsCsv from to = do
+getTxnsAsCsv :: Day -> Day -> Session ByteString
+getTxnsAsCsv from to = do
     accNum <- use accountNumber
     access
       [ "Acc" := accNum
@@ -161,25 +161,23 @@ accessUrl =
 
 access :: [FormParam] -> Session ()
 access params = do
-    jar   <- use cookieJar
-    token <- use responseToken
-    let opts      = W.defaults & W.cookies .~ jar
-        allParams = ("Trxn" := token) : params
-    response <- liftIO (W.postWith opts accessUrl allParams)
-    cookieJar    .= response ^. W.responseCookieJar
-    responseBody .= response ^. W.responseBody
-    responseTags .= parseTags (response ^. W.responseBody)
-    tryScrapeTag tokenTag >>= \case
-      Just tag -> responseToken .= fromAttrib "value" tag
-      Nothing  -> responseToken .= L.empty
+    jar <- use cookieJar
+    tok <- use responseToken
+    let opts = W.defaults & W.cookies .~ jar
+    response <- liftIO (W.postWith opts accessUrl (("Trxn" := tok) : params))
+    let body = response ^. W.responseBody
+    cookieJar     .= response ^. W.responseCookieJar
+    responseBody  .= body
+    responseTags  .= parseTags body
+    responseToken <~ scrapeAttribOrEmpty "value" tokenTag
   where
     tokenTag = "<input type=hidden name=Trxn>"
 
 splitSecretBy :: String -> (Int -> String) -> Session (String, String, String)
 splitSecretBy secret tag = do
-    i1 <- readIndex <$> scrapeTagTextAfter 1 (tag 1)
-    i2 <- readIndex <$> scrapeTagTextAfter 1 (tag 2)
-    i3 <- readIndex <$> scrapeTagTextAfter 1 (tag 3)
+    i1 <- readIndex <$> scrapeTextAfter 1 (tag 1)
+    i2 <- readIndex <$> scrapeTextAfter 1 (tag 2)
+    i3 <- readIndex <$> scrapeTextAfter 1 (tag 3)
     return ([secret !! i1], [secret !! i2], [secret !! i3])
   where
     readIndex str = read (L.unpack str) - 1

@@ -13,7 +13,7 @@ import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 
-data FromTransaction = FromTransaction
+data FromTxn = FromTxn
     { _fromDate      :: !String
     , _fromReference :: !String
     , _fromDetail    :: !String
@@ -22,13 +22,13 @@ data FromTransaction = FromTransaction
     }
   deriving (Generic, Show)
 
-makeLenses ''FromTransaction
+makeLenses ''FromTxn
 
-instance FromRecord FromTransaction
+instance FromRecord FromTxn
 
-emptyFromTransaction :: FromTransaction
-emptyFromTransaction =
-    FromTransaction
+emptyFromTxn :: FromTxn
+emptyFromTxn =
+    FromTxn
       { _fromDate      = ""
       , _fromReference = ""
       , _fromDetail    = ""
@@ -38,7 +38,7 @@ emptyFromTransaction =
 
 --------------------------------------------------------------------------------
 
-data ToTransaction = ToTransaction
+data ToTxn = ToTxn
     { _toDate             :: !String
     , _toOriginalDate     :: !String
     , _toType             :: !String
@@ -52,13 +52,13 @@ data ToTransaction = ToTransaction
     }
   deriving (Generic, Show)
 
-makeLenses ''ToTransaction
+makeLenses ''ToTxn
 
-instance ToRecord ToTransaction
+instance ToRecord ToTxn
 
-emptyToTransaction :: ToTransaction
-emptyToTransaction =
-    ToTransaction
+emptyToTxn :: ToTxn
+emptyToTxn =
+    ToTxn
       { _toDate             = ""
       , _toOriginalDate     = ""
       , _toType             = ""
@@ -73,7 +73,7 @@ emptyToTransaction =
 
 --------------------------------------------------------------------------------
 
-data TransactionType =
+data TxnType =
       Credit
     | Debit
     | VisaCredit
@@ -86,7 +86,7 @@ data TransactionType =
     | ServiceDebit
   deriving (Eq)
 
-instance Show TransactionType
+instance Show TxnType
   where
     show Credit            = "credit"
     show Debit             = "debit"
@@ -101,9 +101,9 @@ instance Show TransactionType
 
 --------------------------------------------------------------------------------
 
-type TransactionReference = (TransactionType, Either String TransactionDetail)
+type TxnReference = (TxnType, Either String TxnDetail)
 
-data TransactionDetail = TransactionDetail
+data TxnDetail = TxnDetail
     { _detailParty     :: !String
     , _detailCode      :: !String
     , _detailReference :: !String
@@ -116,11 +116,11 @@ data TransactionDetail = TransactionDetail
     }
   deriving (Show)
 
-makeLenses ''TransactionDetail
+makeLenses ''TxnDetail
 
-emptyTransactionDetail :: TransactionDetail
-emptyTransactionDetail =
-    TransactionDetail
+emptyTxnDetail :: TxnDetail
+emptyTxnDetail =
+    TxnDetail
       { _detailParty     = ""
       , _detailCode      = ""
       , _detailReference = ""

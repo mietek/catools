@@ -21,38 +21,38 @@ import qualified Parse.Common as P
 main :: IO ()
 main = do
     csv <- L.getContents
-    doRows (decode NoHeader csv)
+    doTxns (decode NoHeader csv)
 
-doRows :: Records FromTransaction -> IO ()
-doRows (Cons (Right trn) more) = do
+doTxns :: Records FromTxn -> IO ()
+doTxns (Cons (Right trn) more) = do
     handle report $
-      L.putStr (encode ([doRow trn]))
-    doRows more
+      L.putStr (encode ([doTxn trn]))
+    doTxns more
   where
     report err =
       hPutStrLn stderr (show (err :: SomeException))
-doRows (Cons (Left err) more) = do
-    hPutStrLn stderr ("doRows: " ++ err)
-    doRows more
-doRows (Nil (Just err) rest) = do
-    hPutStrLn stderr ("doRows: " ++ err)
+doTxns (Cons (Left err) more) = do
+    hPutStrLn stderr ("doTxns: " ++ err)
+    doTxns more
+doTxns (Nil (Just err) rest) = do
+    hPutStrLn stderr ("doTxns: " ++ err)
     L.putStrLn rest
-doRows (Nil Nothing rest) =
+doTxns (Nil Nothing rest) =
     L.putStrLn rest
 
 --------------------------------------------------------------------------------
 
-doRow :: FromTransaction -> ToTransaction
-doRow trn =
+doTxn :: FromTxn -> ToTxn
+doTxn trn =
     case parse P.reference (trn ^. fromReference) of
       (typ, Right det) ->
-        doDetailRow trn typ det
+        doDetailTxn trn typ det
       (typ, Left str) ->
-        doOtherRow trn typ str
+        doOtherTxn trn typ str
 
-doDetailRow :: FromTransaction -> TransactionType -> TransactionDetail -> ToTransaction
-doDetailRow trn typ det =
-    emptyToTransaction
+doDetailTxn :: FromTxn -> TxnType -> TxnDetail -> ToTxn
+doDetailTxn trn typ det =
+    emptyToTxn
       & toDate             .~ date
       & toOriginalDate     .~ origDate
       & toType             .~ show typ
@@ -72,9 +72,9 @@ doDetailRow trn typ det =
     detAmt   = det ^. detailAmount
     origAmt  = if detAmt /= 0 then show detAmt else ""
 
-doOtherRow :: FromTransaction -> TransactionType -> String -> ToTransaction
-doOtherRow trn typ str =
-    emptyToTransaction
+doOtherTxn :: FromTxn -> TxnType -> String -> ToTxn
+doOtherTxn trn typ str =
+    emptyToTxn
       & toDate         .~ date
       & toOriginalDate .~ date
       & toType         .~ show typ
