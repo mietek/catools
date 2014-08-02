@@ -23,7 +23,7 @@ main = do
     csv <- L.getContents
     doTxns (decode NoHeader csv)
 
-doTxns :: Records FromTxn -> IO ()
+doTxns :: Records SrcTxn -> IO ()
 doTxns (Cons (Right txn) more) = do
     handle report $
       L.putStr (encode ([doTxn txn]))
@@ -42,46 +42,46 @@ doTxns (Nil Nothing rest) =
 
 --------------------------------------------------------------------------------
 
-doTxn :: FromTxn -> ToTxn
+doTxn :: SrcTxn -> DstTxn
 doTxn txn =
-    case parse P.typeAndDetail (txn ^. fromDetail) of
+    case parse P.typeAndDetail (txn ^. srcDetail) of
+      (typ, Left str) ->
+        doSimpleTxn txn typ str
       (typ, Right det) ->
         doDetailTxn txn typ det
-      (typ, Left str) ->
-        doOtherTxn txn typ str
 
-doDetailTxn :: FromTxn -> TxnType -> TxnDetail -> ToTxn
-doDetailTxn txn typ det =
-    emptyToTxn
-      & toDate             .~ date
-      & toOriginalDate     .~ maybe date show (det ^. detailDate)
-      & toType             .~ show typ
-      & toParty            .~ filter (/= ',') (det ^. detailParty)
-      & toReference        .~ ref
-      & toTerritory        .~ filter (/= ',') (det ^. detailTerritory)
-      & toOriginalAmount   .~ amt
-      & toOriginalCurrency .~ det ^. detailCurrency
-      & toAmount           .~ txn ^. fromAmount
-      & toBalance          .~ txn ^. fromBalance
+doSimpleTxn :: SrcTxn -> TxnType -> String -> DstTxn
+doSimpleTxn txn typ str =
+    emptyDstTxn
+      & dstDate         .~ date
+      & dstOriginalDate .~ date
+      & dstType         .~ show typ
+      & dstParty        .~ filter (/= ',') str
+      & dstReference    .~ filter (/= ',') (txn ^. srcSubReference)
+      & dstAmount       .~ txn ^. srcAmount
+      & dstBalance      .~ txn ^. srcBalance
   where
-    date   = show (parse P.shortDate (txn ^. fromDate))
-    ref    = detRef ++ if null detRef || null txnRef then "" else " " ++ txnRef
-    txnRef = txn ^. fromReference
+    date = show (parse P.shortDate (txn ^. srcDate))
+
+doDetailTxn :: SrcTxn -> TxnType -> TxnDetail -> DstTxn
+doDetailTxn txn typ det =
+    emptyDstTxn
+      & dstDate             .~ date
+      & dstOriginalDate     .~ maybe date show (det ^. detailDate)
+      & dstType             .~ show typ
+      & dstParty            .~ filter (/= ',') (det ^. detailParty)
+      & dstReference        .~ ref
+      & dstTerritory        .~ filter (/= ',') (det ^. detailTerritory)
+      & dstOriginalAmount   .~ amt
+      & dstOriginalCurrency .~ det ^. detailCurrency
+      & dstAmount           .~ txn ^. srcAmount
+      & dstBalance          .~ txn ^. srcBalance
+  where
+    date   = show (parse P.shortDate (txn ^. srcDate))
+    ref    = detRef ++ if null detRef || null subRef then "" else " " ++ subRef
     detRef = det ^. detailReference
+    subRef = txn ^. srcSubReference
     amt    = if detAmt /= 0 then show detAmt else ""
     detAmt = det ^. detailAmount
-
-doOtherTxn :: FromTxn -> TxnType -> String -> ToTxn
-doOtherTxn txn typ str =
-    emptyToTxn
-      & toDate         .~ date
-      & toOriginalDate .~ date
-      & toType         .~ show typ
-      & toParty        .~ filter (/= ',') str
-      & toReference    .~ filter (/= ',') (txn ^. fromReference)
-      & toAmount       .~ txn ^. fromAmount
-      & toBalance      .~ txn ^. fromBalance
-  where
-    date = show (parse P.shortDate (txn ^. fromDate))
 
 --------------------------------------------------------------------------------

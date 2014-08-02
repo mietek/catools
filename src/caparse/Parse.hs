@@ -30,7 +30,7 @@ parse p str =
 
 --------------------------------------------------------------------------------
 
-typeAndDetail :: ReadP (TxnType, Either String TxnDetail)
+typeAndDetail :: ReadP TxnTypeAndDetail
 typeAndDetail =
     choice
       [ credit
@@ -45,61 +45,61 @@ typeAndDetail =
       , serviceDebit
       ]
 
-credit :: ReadP (TxnType, Either String TxnDetail)
+credit :: ReadP TxnTypeAndDetail
 credit = do
     skipString "Giro: "
     str <- munch1 isPrint
     return (Credit, Left str)
 
-debit :: ReadP (TxnType, Either String TxnDetail)
+debit :: ReadP TxnTypeAndDetail
 debit = do
     skipString "R/P to "
     str <- munch1 isPrint
     return (Debit, Left str)
 
-visaCredit :: ReadP (TxnType, Either String TxnDetail)
+visaCredit :: ReadP TxnTypeAndDetail
 visaCredit = do
     skipString "Visa Sales Credit "
     det <- visaDetail
     return (VisaCredit, Right det)
 
-visaDebit :: ReadP (TxnType, Either String TxnDetail)
+visaDebit :: ReadP TxnTypeAndDetail
 visaDebit = do
     skipString "Visa Sales "
     det <- visaDetail
     let amt = 0 - (det ^. detailAmount)
     return (VisaDebit, Right (det & detailAmount .~ amt))
 
-chequeCredit :: ReadP (TxnType, Either String TxnDetail)
+chequeCredit :: ReadP TxnTypeAndDetail
 chequeCredit = do
     skipString "Cheque Deposit"
     return (ChequeCredit, Left "")
 
-foreignCredit :: ReadP (TxnType, Either String TxnDetail)
+foreignCredit :: ReadP TxnTypeAndDetail
 foreignCredit = do
     skipString "TT b/o "
     det <- foreignCreditDetail
     return (ForeignCredit, Right det)
 
-freeForeignCredit :: ReadP (TxnType, Either String TxnDetail)
+freeForeignCredit :: ReadP TxnTypeAndDetail
 freeForeignCredit = do
     skipString "B/o "
     det <- foreignCreditDetail
     return (FreeForeignCredit, Right det)
 
-directDebit :: ReadP (TxnType, Either String TxnDetail)
+directDebit :: ReadP TxnTypeAndDetail
 directDebit = do
     skipString "DD to "
     str <- munch1 isPrint
     return (DirectDebit, Left str)
 
-recurringDebit :: ReadP (TxnType, Either String TxnDetail)
+recurringDebit :: ReadP TxnTypeAndDetail
 recurringDebit = do
     skipString "S/O to "
     str <- munch1 isPrint
     return (RecurringDebit, Left str)
 
-serviceDebit :: ReadP (TxnType, Either String TxnDetail)
+serviceDebit :: ReadP TxnTypeAndDetail
 serviceDebit = do
     skipString "Service Charge"
     return (ServiceDebit, Left "")

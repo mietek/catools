@@ -164,9 +164,9 @@ access params = do
     jar <- use cookieJar
     tok <- use responseToken
     let opts = W.defaults & W.cookies .~ jar
-    response <- liftIO (W.postWith opts accessUrl (("Trxn" := tok) : params))
-    let body = response ^. W.responseBody
-    cookieJar     .= response ^. W.responseCookieJar
+    res <- liftIO (W.postWith opts accessUrl (("Trxn" := tok) : params))
+    let body = res ^. W.responseBody
+    cookieJar     .= res ^. W.responseCookieJar
     responseBody  .= body
     responseTags  .= parseTags body
     responseToken <~ scrapeAttribOrEmpty "value" tokenTag

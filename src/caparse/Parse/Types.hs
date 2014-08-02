@@ -13,66 +13,6 @@ import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 
-data FromTxn = FromTxn
-    { _fromDate      :: !String
-    , _fromDetail    :: !String
-    , _fromReference :: !String
-    , _fromAmount    :: !String
-    , _fromBalance   :: !String
-    }
-  deriving (Generic, Show)
-
-makeLenses ''FromTxn
-
-instance FromRecord FromTxn
-
-emptyFromTxn :: FromTxn
-emptyFromTxn =
-    FromTxn
-      { _fromDate      = ""
-      , _fromDetail    = ""
-      , _fromReference = ""
-      , _fromAmount    = ""
-      , _fromBalance   = ""
-      }
-
---------------------------------------------------------------------------------
-
-data ToTxn = ToTxn
-    { _toDate             :: !String
-    , _toOriginalDate     :: !String
-    , _toType             :: !String
-    , _toParty            :: !String
-    , _toReference        :: !String
-    , _toTerritory        :: !String
-    , _toOriginalAmount   :: !String
-    , _toOriginalCurrency :: !String
-    , _toAmount           :: !String
-    , _toBalance          :: !String
-    }
-  deriving (Generic, Show)
-
-makeLenses ''ToTxn
-
-instance ToRecord ToTxn
-
-emptyToTxn :: ToTxn
-emptyToTxn =
-    ToTxn
-      { _toDate             = ""
-      , _toOriginalDate     = ""
-      , _toType             = ""
-      , _toParty            = ""
-      , _toReference        = ""
-      , _toTerritory        = ""
-      , _toOriginalAmount   = ""
-      , _toOriginalCurrency = ""
-      , _toAmount           = ""
-      , _toBalance          = ""
-      }
-
---------------------------------------------------------------------------------
-
 data TxnType =
       Credit
     | Debit
@@ -101,6 +41,33 @@ instance Show TxnType
 
 --------------------------------------------------------------------------------
 
+data SrcTxn = SrcTxn
+    { _srcDate         :: !String
+    , _srcDetail       :: !String
+    , _srcSubReference :: !String
+    , _srcAmount       :: !String
+    , _srcBalance      :: !String
+    }
+  deriving (Generic, Show)
+
+makeLenses ''SrcTxn
+
+instance FromRecord SrcTxn
+
+emptySrcTxn :: SrcTxn
+emptySrcTxn =
+    SrcTxn
+      { _srcDate         = ""
+      , _srcDetail       = ""
+      , _srcSubReference = ""
+      , _srcAmount       = ""
+      , _srcBalance      = ""
+      }
+
+--------------------------------------------------------------------------------
+
+type TxnTypeAndDetail = (TxnType, Either String TxnDetail)
+
 data TxnDetail = TxnDetail
     { _detailParty     :: !String
     , _detailCode      :: !String
@@ -128,6 +95,41 @@ emptyTxnDetail =
       , _detailDate      = Nothing
       , _detailRate      = 0
       , _detailFee       = 0
+      }
+
+--------------------------------------------------------------------------------
+
+data DstTxn = DstTxn
+    { _dstDate             :: !String
+    , _dstOriginalDate     :: !String
+    , _dstType             :: !String
+    , _dstParty            :: !String
+    , _dstReference        :: !String
+    , _dstTerritory        :: !String
+    , _dstOriginalAmount   :: !String
+    , _dstOriginalCurrency :: !String
+    , _dstAmount           :: !String
+    , _dstBalance          :: !String
+    }
+  deriving (Generic, Show)
+
+makeLenses ''DstTxn
+
+instance ToRecord DstTxn
+
+emptyDstTxn :: DstTxn
+emptyDstTxn =
+    DstTxn
+      { _dstDate             = ""
+      , _dstOriginalDate     = ""
+      , _dstType             = ""
+      , _dstParty            = ""
+      , _dstReference        = ""
+      , _dstTerritory        = ""
+      , _dstOriginalAmount   = ""
+      , _dstOriginalCurrency = ""
+      , _dstAmount           = ""
+      , _dstBalance          = ""
       }
 
 --------------------------------------------------------------------------------
