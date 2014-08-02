@@ -149,9 +149,9 @@ visaDetail = do
 visaCurrency :: ReadP String
 visaCurrency =
     choice
-      [ istring "EU"  >> return "EUR"
-      , istring "US"  >> return "USD"
-      , istring "USD" >> return "USD"
+      [ "EU"  ~> "EUR"
+      , "US"  ~> "USD"
+      , "USD" ~> "USD"
       , many1 (satisfy isLetter)
       ]
 

@@ -12,314 +12,320 @@ import Parse.Common
 
 visaTerritory :: ReadP String
 visaTerritory =
-        stateCode
-    <++ countryCode
-    <++ (count 2 (satisfy isLetter))
+    choice
+      [ stateCode
+      , countryCode
+      , count 2 (satisfy isLetter)
+      ]
 
 stateCode :: ReadP String
-stateCode = do
-        (istring "AL" >> return "Alabama")
-    <++ (istring "AK" >> return "Alaska")
-    <++ (istring "AZ" >> return "Arizona")
-    <++ (istring "AR" >> return "Arkansas")
-    <++ (istring "CA" >> return "California")
-    <++ (istring "CO" >> return "Colorado")
-    <++ (istring "CT" >> return "Connecticut")
-    <++ (istring "DC" >> return "District of Columbia")
-    <++ (istring "DE" >> return "Delaware")
-    <++ (istring "FL" >> return "Florida")
-    <++ (istring "GA" >> return "Georgia")
-    <++ (istring "HI" >> return "Hawaii")
-    <++ (istring "ID" >> return "Idaho")
-    <++ (istring "IL" >> return "Illinois")
-    <++ (istring "IN" >> return "Indiana")
-    <++ (istring "IA" >> return "Iowa")
-    <++ (istring "KS" >> return "Kansas")
-    <++ (istring "KY" >> return "Kentucky")
-    <++ (istring "LA" >> return "Louisiana")
-    <++ (istring "ME" >> return "Maine")
-    <++ (istring "MD" >> return "Maryland")
-    <++ (istring "MA" >> return "Massachusetts")
-    <++ (istring "MI" >> return "Michigan")
-    <++ (istring "MN" >> return "Minnesota")
-    <++ (istring "MS" >> return "Mississippi")
-    <++ (istring "MO" >> return "Missouri")
-    <++ (istring "MT" >> return "Montana")
-    <++ (istring "NE" >> return "Nebraska")
-    <++ (istring "NV" >> return "Nevada")
-    <++ (istring "NH" >> return "New Hampshire")
-    <++ (istring "NJ" >> return "New Jersey")
-    <++ (istring "NM" >> return "New Mexico")
-    <++ (istring "NY" >> return "New York")
-    <++ (istring "NC" >> return "North Carolina")
-    <++ (istring "ND" >> return "North Dakota")
-    <++ (istring "OH" >> return "Ohio")
-    <++ (istring "OK" >> return "Oklahoma")
-    <++ (istring "OR" >> return "Oregon")
-    <++ (istring "PA" >> return "Pennsylvania")
-    <++ (istring "RI" >> return "Rhode Island")
-    <++ (istring "SC" >> return "South Carolina")
-    <++ (istring "SD" >> return "South Dakota")
-    <++ (istring "TN" >> return "Tennessee")
-    <++ (istring "TX" >> return "Texas")
-    <++ (istring "UT" >> return "Utah")
-    <++ (istring "VT" >> return "Vermont")
-    <++ (istring "VA" >> return "Virginia")
-    <++ (istring "WA" >> return "Washington")
-    <++ (istring "WV" >> return "West Virginia")
-    <++ (istring "WI" >> return "Wisconsin")
-    <++ (istring "WY" >> return "Wyoming")
+stateCode =
+    choice
+      [ "AL" ~> "Alabama"
+      , "AK" ~> "Alaska"
+      , "AZ" ~> "Arizona"
+      , "AR" ~> "Arkansas"
+      , "CA" ~> "California"
+      , "CO" ~> "Colorado"
+      , "CT" ~> "Connecticut"
+      , "DC" ~> "District of Columbia"
+      , "DE" ~> "Delaware"
+      , "FL" ~> "Florida"
+      , "GA" ~> "Georgia"
+      , "HI" ~> "Hawaii"
+      , "ID" ~> "Idaho"
+      , "IL" ~> "Illinois"
+      , "IN" ~> "Indiana"
+      , "IA" ~> "Iowa"
+      , "KS" ~> "Kansas"
+      , "KY" ~> "Kentucky"
+      , "LA" ~> "Louisiana"
+      , "ME" ~> "Maine"
+      , "MD" ~> "Maryland"
+      , "MA" ~> "Massachusetts"
+      , "MI" ~> "Michigan"
+      , "MN" ~> "Minnesota"
+      , "MS" ~> "Mississippi"
+      , "MO" ~> "Missouri"
+      , "MT" ~> "Montana"
+      , "NE" ~> "Nebraska"
+      , "NV" ~> "Nevada"
+      , "NH" ~> "New Hampshire"
+      , "NJ" ~> "New Jersey"
+      , "NM" ~> "New Mexico"
+      , "NY" ~> "New York"
+      , "NC" ~> "North Carolina"
+      , "ND" ~> "North Dakota"
+      , "OH" ~> "Ohio"
+      , "OK" ~> "Oklahoma"
+      , "OR" ~> "Oregon"
+      , "PA" ~> "Pennsylvania"
+      , "RI" ~> "Rhode Island"
+      , "SC" ~> "South Carolina"
+      , "SD" ~> "South Dakota"
+      , "TN" ~> "Tennessee"
+      , "TX" ~> "Texas"
+      , "UT" ~> "Utah"
+      , "VT" ~> "Vermont"
+      , "VA" ~> "Virginia"
+      , "WA" ~> "Washington"
+      , "WV" ~> "West Virginia"
+      , "WI" ~> "Wisconsin"
+      , "WY" ~> "Wyoming"
+      ]
 
 countryCode :: ReadP String
-countryCode = do
-        (istring "AD" >> return "Andorra")
-    <++ (istring "AE" >> return "United Arab Emirates")
-    <++ (istring "AF" >> return "Afghanistan")
-    <++ (istring "AG" >> return "Antigua and Barbuda")
-    <++ (istring "AI" >> return "Anguilla")
-    <++ (istring "AL" >> return "Albania")
-    <++ (istring "AM" >> return "Armenia")
-    <++ (istring "AO" >> return "Angola")
-    <++ (istring "AQ" >> return "Antarctica")
-    <++ (istring "AR" >> return "Argentina")
-    <++ (istring "AS" >> return "American Samoa")
-    <++ (istring "AT" >> return "Austria")
-    <++ (istring "AU" >> return "Australia")
-    <++ (istring "AW" >> return "Aruba")
-    <++ (istring "AX" >> return "Åland Islands")
-    <++ (istring "AZ" >> return "Azerbaijan")
-    <++ (istring "BA" >> return "Bosnia and Herzegovina")
-    <++ (istring "BB" >> return "Barbados")
-    <++ (istring "BD" >> return "Bangladesh")
-    <++ (istring "BE" >> return "Belgium")
-    <++ (istring "BF" >> return "Burkina Faso")
-    <++ (istring "BG" >> return "Bulgaria")
-    <++ (istring "BH" >> return "Bahrain")
-    <++ (istring "BI" >> return "Burundi")
-    <++ (istring "BJ" >> return "Benin")
-    <++ (istring "BL" >> return "Saint Barthélemy")
-    <++ (istring "BM" >> return "Bermuda")
-    <++ (istring "BN" >> return "Brunei") -- Brunei Darussalam
-    <++ (istring "BO" >> return "Bolivia") -- Bolivia, Plurinational State of
-    <++ (istring "BQ" >> return "Caribbean Netherlands") -- Bonaire, Sint Eustatius and Saba
-    <++ (istring "BR" >> return "Brazil")
-    <++ (istring "BS" >> return "The Bahamas") -- Bahamas
-    <++ (istring "BT" >> return "Bhutan")
-    <++ (istring "BV" >> return "Bouvet Island")
-    <++ (istring "BW" >> return "Botswana")
-    <++ (istring "BY" >> return "Belarus")
-    <++ (istring "BZ" >> return "Belize")
-    <++ (istring "CA" >> return "Canada")
-    <++ (istring "CC" >> return "Cocos (Keeling) Islands")
-    <++ (istring "CD" >> return "Democratic Republic of the Congo") -- Congo, the Democratic Republic of the
-    <++ (istring "CF" >> return "Central African Republic")
-    <++ (istring "CG" >> return "Republic of the Congo") -- Congo
-    <++ (istring "CH" >> return "Switzerland")
-    <++ (istring "CI" >> return "Côte d'Ivoire")
-    <++ (istring "CK" >> return "Cook Islands")
-    <++ (istring "CL" >> return "Chile")
-    <++ (istring "CM" >> return "Cameroon")
-    <++ (istring "CN" >> return "China")
-    <++ (istring "CO" >> return "Colombia")
-    <++ (istring "CR" >> return "Costa Rica")
-    <++ (istring "CU" >> return "Cuba")
-    <++ (istring "CV" >> return "Cabo Verde")
-    <++ (istring "CW" >> return "Curaçao")
-    <++ (istring "CX" >> return "Christmas Island")
-    <++ (istring "CY" >> return "Cyprus")
-    <++ (istring "CZ" >> return "Czech Republic")
-    <++ (istring "DE" >> return "Germany")
-    <++ (istring "DJ" >> return "Djibouti")
-    <++ (istring "DK" >> return "Denmark")
-    <++ (istring "DM" >> return "Dominica")
-    <++ (istring "DO" >> return "Dominican Republic")
-    <++ (istring "DZ" >> return "Algeria")
-    <++ (istring "EC" >> return "Ecuador")
-    <++ (istring "EE" >> return "Estonia")
-    <++ (istring "EG" >> return "Egypt")
-    <++ (istring "EH" >> return "Western Sahara")
-    <++ (istring "ER" >> return "Eritrea")
-    <++ (istring "ES" >> return "Spain")
-    <++ (istring "ET" >> return "Ethiopia")
-    <++ (istring "FI" >> return "Finland")
-    <++ (istring "FJ" >> return "Fiji")
-    <++ (istring "FK" >> return "Falkland Islands") -- Falkland Islands (Malvinas)
-    <++ (istring "FM" >> return "Federated States of Micronesia") -- Micronesia, Federated States of
-    <++ (istring "FO" >> return "Faroe Islands")
-    <++ (istring "FR" >> return "France")
-    <++ (istring "GA" >> return "Gabon")
-    <++ (istring "GB" >> return "United Kingdom")
-    <++ (istring "GD" >> return "Grenada")
-    <++ (istring "GE" >> return "Georgia")
-    <++ (istring "GF" >> return "French Guiana")
-    <++ (istring "GG" >> return "Guernsey")
-    <++ (istring "GH" >> return "Ghana")
-    <++ (istring "GI" >> return "Gibraltar")
-    <++ (istring "GL" >> return "Greenland")
-    <++ (istring "GM" >> return "Gambia")
-    <++ (istring "GN" >> return "Guinea")
-    <++ (istring "GP" >> return "Guadeloupe")
-    <++ (istring "GQ" >> return "Equatorial Guinea")
-    <++ (istring "GR" >> return "Greece")
-    <++ (istring "GS" >> return "South Georgia and the South Sandwich Islands")
-    <++ (istring "GT" >> return "Guatemala")
-    <++ (istring "GU" >> return "Guam")
-    <++ (istring "GW" >> return "Guinea-Bissau")
-    <++ (istring "GY" >> return "Guyana")
-    <++ (istring "HK" >> return "Hong Kong")
-    <++ (istring "HM" >> return "Heard Island and McDonald Islands")
-    <++ (istring "HN" >> return "Honduras")
-    <++ (istring "HR" >> return "Croatia")
-    <++ (istring "HT" >> return "Haiti")
-    <++ (istring "HU" >> return "Hungary")
-    <++ (istring "ID" >> return "Indonesia")
-    <++ (istring "IE" >> return "Ireland") -- Ireland, Republic of
-    <++ (istring "IL" >> return "Israel")
-    <++ (istring "IM" >> return "Isle of Man")
-    <++ (istring "IN" >> return "India")
-    <++ (istring "IO" >> return "British Indian Ocean Territory")
-    <++ (istring "IQ" >> return "Iraq")
-    <++ (istring "IR" >> return "Iran") -- Iran, Islamic Republic of
-    <++ (istring "IS" >> return "Iceland")
-    <++ (istring "IT" >> return "Italy")
-    <++ (istring "JE" >> return "Jersey")
-    <++ (istring "JM" >> return "Jamaica")
-    <++ (istring "JO" >> return "Jordan")
-    <++ (istring "JP" >> return "Japan")
-    <++ (istring "KE" >> return "Kenya")
-    <++ (istring "KG" >> return "Kyrgyzstan")
-    <++ (istring "KH" >> return "Cambodia")
-    <++ (istring "KI" >> return "Kiribati")
-    <++ (istring "KM" >> return "Comoros")
-    <++ (istring "KN" >> return "Saint Kitts and Nevis")
-    <++ (istring "KP" >> return "North Korea") -- Korea, Democratic People's Republic of
-    <++ (istring "KR" >> return "South Korea") -- Korea, Republic of
-    <++ (istring "KW" >> return "Kuwait")
-    <++ (istring "KY" >> return "Cayman Islands")
-    <++ (istring "KZ" >> return "Kazakhstan")
-    <++ (istring "LA" >> return "Laos") -- Lao People's Democratic Republic
-    <++ (istring "LB" >> return "Lebanon")
-    <++ (istring "LC" >> return "Saint Lucia")
-    <++ (istring "LI" >> return "Liechtenstein")
-    <++ (istring "LK" >> return "Sri Lanka")
-    <++ (istring "LR" >> return "Liberia")
-    <++ (istring "LS" >> return "Lesotho")
-    <++ (istring "LT" >> return "Lithuania")
-    <++ (istring "LU" >> return "Luxembourg")
-    <++ (istring "LV" >> return "Latvia")
-    <++ (istring "LY" >> return "Libya")
-    <++ (istring "MA" >> return "Morocco")
-    <++ (istring "MC" >> return "Monaco")
-    <++ (istring "MD" >> return "Moldova") -- Moldova, Republic of
-    <++ (istring "ME" >> return "Montenegro")
-    <++ (istring "MF" >> return "Collectivity of Saint Martin") -- Saint Martin (French part)
-    <++ (istring "MG" >> return "Madagascar")
-    <++ (istring "MH" >> return "Marshall Islands")
-    <++ (istring "MK" >> return "Republic of Macedonia") -- Macedonia, the former Yugoslav Republic of
-    <++ (istring "ML" >> return "Mali")
-    <++ (istring "MM" >> return "Myanmar")
-    <++ (istring "MN" >> return "Mongolia")
-    <++ (istring "MO" >> return "Macau") -- Macao
-    <++ (istring "MP" >> return "Northern Mariana Islands")
-    <++ (istring "MQ" >> return "Martinique")
-    <++ (istring "MR" >> return "Mauritania")
-    <++ (istring "MS" >> return "Montserrat")
-    <++ (istring "MT" >> return "Malta")
-    <++ (istring "MU" >> return "Mauritius")
-    <++ (istring "MV" >> return "Maldives")
-    <++ (istring "MW" >> return "Malawi")
-    <++ (istring "MX" >> return "Mexico")
-    <++ (istring "MY" >> return "Malaysia")
-    <++ (istring "MZ" >> return "Mozambique")
-    <++ (istring "NA" >> return "Namibia")
-    <++ (istring "NC" >> return "New Caledonia")
-    <++ (istring "NE" >> return "Niger")
-    <++ (istring "NF" >> return "Norfolk Island")
-    <++ (istring "NG" >> return "Nigeria")
-    <++ (istring "NI" >> return "Nicaragua")
-    <++ (istring "NL" >> return "Netherlands")
-    <++ (istring "NO" >> return "Norway")
-    <++ (istring "NP" >> return "Nepal")
-    <++ (istring "NR" >> return "Nauru")
-    <++ (istring "NU" >> return "Niue")
-    <++ (istring "NZ" >> return "New Zealand")
-    <++ (istring "OM" >> return "Oman")
-    <++ (istring "PA" >> return "Panama")
-    <++ (istring "PE" >> return "Peru")
-    <++ (istring "PF" >> return "French Polynesia")
-    <++ (istring "PG" >> return "Papua New Guinea")
-    <++ (istring "PH" >> return "Philippines")
-    <++ (istring "PK" >> return "Pakistan")
-    <++ (istring "PL" >> return "Poland")
-    <++ (istring "PM" >> return "Saint Pierre and Miquelon")
-    <++ (istring "PN" >> return "Pitcairn Islands") -- Pitcairn
-    <++ (istring "PR" >> return "Puerto Rico")
-    <++ (istring "PS" >> return "State of Palestine") -- Palestine, State of
-    <++ (istring "PT" >> return "Portugal")
-    <++ (istring "PW" >> return "Palau")
-    <++ (istring "PY" >> return "Paraguay")
-    <++ (istring "QA" >> return "Qatar")
-    <++ (istring "RE" >> return "Réunion")
-    <++ (istring "RO" >> return "Romania")
-    <++ (istring "RS" >> return "Serbia")
-    <++ (istring "RU" >> return "Russia") -- Russian Federation
-    <++ (istring "RW" >> return "Rwanda")
-    <++ (istring "SA" >> return "Saudi Arabia")
-    <++ (istring "SB" >> return "Solomon Islands")
-    <++ (istring "SC" >> return "Seychelles")
-    <++ (istring "SD" >> return "Sudan")
-    <++ (istring "SE" >> return "Sweden")
-    <++ (istring "SG" >> return "Singapore")
-    <++ (istring "SH" >> return "Saint Helena and Ascension and Tristan da Cunha") -- Saint Helena, Ascension and Tristan da Cunha
-    <++ (istring "SI" >> return "Slovenia")
-    <++ (istring "SJ" >> return "Svalbard and Jan Mayen")
-    <++ (istring "SK" >> return "Slovakia")
-    <++ (istring "SL" >> return "Sierra Leone")
-    <++ (istring "SM" >> return "San Marino")
-    <++ (istring "SN" >> return "Senegal")
-    <++ (istring "SO" >> return "Somalia")
-    <++ (istring "SR" >> return "Suriname")
-    <++ (istring "SS" >> return "South Sudan")
-    <++ (istring "ST" >> return "São Tomé and Príncipe")
-    <++ (istring "SV" >> return "El Salvador")
-    <++ (istring "SX" >> return "Sint Maarten") -- Sint Maarten (Dutch part)
-    <++ (istring "SY" >> return "Syria") -- Syrian Arab Republic
-    <++ (istring "SZ" >> return "Swaziland")
-    <++ (istring "TC" >> return "Turks and Caicos Islands")
-    <++ (istring "TD" >> return "Chad")
-    <++ (istring "TF" >> return "French Southern and Antarctic Lands") -- French Southern Territories
-    <++ (istring "TG" >> return "Togo")
-    <++ (istring "TH" >> return "Thailand")
-    <++ (istring "TJ" >> return "Tajikistan")
-    <++ (istring "TK" >> return "Tokelau")
-    <++ (istring "TL" >> return "East Timor") -- Timor-Leste
-    <++ (istring "TM" >> return "Turkmenistan")
-    <++ (istring "TN" >> return "Tunisia")
-    <++ (istring "TO" >> return "Tonga")
-    <++ (istring "TR" >> return "Turkey")
-    <++ (istring "TT" >> return "Trinidad and Tobago")
-    <++ (istring "TV" >> return "Tuvalu")
-    <++ (istring "TW" >> return "Taiwan") -- Taiwan, Province of China
-    <++ (istring "TZ" >> return "Tanzania") -- Tanzania, United Republic of
-    <++ (istring "UA" >> return "Ukraine")
-    <++ (istring "UG" >> return "Uganda")
-    <++ (istring "UM" >> return "United States Minor Outlying Islands")
-    <++ (istring "US" >> return "United States")
-    <++ (istring "UY" >> return "Uruguay")
-    <++ (istring "UZ" >> return "Uzbekistan")
-    <++ (istring "VA" >> return "Vatican City") -- Holy See (Vatican City State)
-    <++ (istring "VC" >> return "Saint Vincent and the Grenadines")
-    <++ (istring "VE" >> return "Venezuela") -- Venezuela, Bolivarian Republic of
-    <++ (istring "VG" >> return "British Virgin Islands") -- Virgin Islands, British
-    <++ (istring "VI" >> return "United States Virgin Islands") -- Virgin Islands, U.S.
-    <++ (istring "VN" >> return "Vietnam") -- Viet Nam
-    <++ (istring "VU" >> return "Vanuatu")
-    <++ (istring "WF" >> return "Wallis and Futuna")
-    <++ (istring "WS" >> return "Samoa")
-    <++ (istring "YE" >> return "Yemen")
-    <++ (istring "YT" >> return "Mayotte")
-    <++ (istring "ZA" >> return "South Africa")
-    <++ (istring "ZM" >> return "Zambia")
-    <++ (istring "ZW" >> return "Zimbabwe")
+countryCode =
+    choice
+      [ "AD" ~> "Andorra"
+      , "AE" ~> "United Arab Emirates"
+      , "AF" ~> "Afghanistan"
+      , "AG" ~> "Antigua and Barbuda"
+      , "AI" ~> "Anguilla"
+      , "AL" ~> "Albania"
+      , "AM" ~> "Armenia"
+      , "AO" ~> "Angola"
+      , "AQ" ~> "Antarctica"
+      , "AR" ~> "Argentina"
+      , "AS" ~> "American Samoa"
+      , "AT" ~> "Austria"
+      , "AU" ~> "Australia"
+      , "AW" ~> "Aruba"
+      , "AX" ~> "Åland Islands"
+      , "AZ" ~> "Azerbaijan"
+      , "BA" ~> "Bosnia and Herzegovina"
+      , "BB" ~> "Barbados"
+      , "BD" ~> "Bangladesh"
+      , "BE" ~> "Belgium"
+      , "BF" ~> "Burkina Faso"
+      , "BG" ~> "Bulgaria"
+      , "BH" ~> "Bahrain"
+      , "BI" ~> "Burundi"
+      , "BJ" ~> "Benin"
+      , "BL" ~> "Saint Barthélemy"
+      , "BM" ~> "Bermuda"
+      , "BN" ~> "Brunei" -- Brunei Darussalam
+      , "BO" ~> "Bolivia" -- Bolivia, Plurinational State of
+      , "BQ" ~> "Caribbean Netherlands" -- Bonaire, Sint Eustatius and Saba
+      , "BR" ~> "Brazil"
+      , "BS" ~> "The Bahamas" -- Bahamas
+      , "BT" ~> "Bhutan"
+      , "BV" ~> "Bouvet Island"
+      , "BW" ~> "Botswana"
+      , "BY" ~> "Belarus"
+      , "BZ" ~> "Belize"
+      , "CA" ~> "Canada"
+      , "CC" ~> "Cocos (Keeling) Islands"
+      , "CD" ~> "Democratic Republic of the Congo" -- Congo, the Democratic Republic of the
+      , "CF" ~> "Central African Republic"
+      , "CG" ~> "Republic of the Congo" -- Congo
+      , "CH" ~> "Switzerland"
+      , "CI" ~> "Côte d'Ivoire"
+      , "CK" ~> "Cook Islands"
+      , "CL" ~> "Chile"
+      , "CM" ~> "Cameroon"
+      , "CN" ~> "China"
+      , "CO" ~> "Colombia"
+      , "CR" ~> "Costa Rica"
+      , "CU" ~> "Cuba"
+      , "CV" ~> "Cabo Verde"
+      , "CW" ~> "Curaçao"
+      , "CX" ~> "Christmas Island"
+      , "CY" ~> "Cyprus"
+      , "CZ" ~> "Czech Republic"
+      , "DE" ~> "Germany"
+      , "DJ" ~> "Djibouti"
+      , "DK" ~> "Denmark"
+      , "DM" ~> "Dominica"
+      , "DO" ~> "Dominican Republic"
+      , "DZ" ~> "Algeria"
+      , "EC" ~> "Ecuador"
+      , "EE" ~> "Estonia"
+      , "EG" ~> "Egypt"
+      , "EH" ~> "Western Sahara"
+      , "ER" ~> "Eritrea"
+      , "ES" ~> "Spain"
+      , "ET" ~> "Ethiopia"
+      , "FI" ~> "Finland"
+      , "FJ" ~> "Fiji"
+      , "FK" ~> "Falkland Islands" -- Falkland Islands (Malvinas
+      , "FM" ~> "Federated States of Micronesia" -- Micronesia, Federated States of
+      , "FO" ~> "Faroe Islands"
+      , "FR" ~> "France"
+      , "GA" ~> "Gabon"
+      , "GB" ~> "United Kingdom"
+      , "GD" ~> "Grenada"
+      , "GE" ~> "Georgia"
+      , "GF" ~> "French Guiana"
+      , "GG" ~> "Guernsey"
+      , "GH" ~> "Ghana"
+      , "GI" ~> "Gibraltar"
+      , "GL" ~> "Greenland"
+      , "GM" ~> "Gambia"
+      , "GN" ~> "Guinea"
+      , "GP" ~> "Guadeloupe"
+      , "GQ" ~> "Equatorial Guinea"
+      , "GR" ~> "Greece"
+      , "GS" ~> "South Georgia and the South Sandwich Islands"
+      , "GT" ~> "Guatemala"
+      , "GU" ~> "Guam"
+      , "GW" ~> "Guinea-Bissau"
+      , "GY" ~> "Guyana"
+      , "HK" ~> "Hong Kong"
+      , "HM" ~> "Heard Island and McDonald Islands"
+      , "HN" ~> "Honduras"
+      , "HR" ~> "Croatia"
+      , "HT" ~> "Haiti"
+      , "HU" ~> "Hungary"
+      , "ID" ~> "Indonesia"
+      , "IE" ~> "Ireland" -- Ireland, Republic of
+      , "IL" ~> "Israel"
+      , "IM" ~> "Isle of Man"
+      , "IN" ~> "India"
+      , "IO" ~> "British Indian Ocean Territory"
+      , "IQ" ~> "Iraq"
+      , "IR" ~> "Iran" -- Iran, Islamic Republic of
+      , "IS" ~> "Iceland"
+      , "IT" ~> "Italy"
+      , "JE" ~> "Jersey"
+      , "JM" ~> "Jamaica"
+      , "JO" ~> "Jordan"
+      , "JP" ~> "Japan"
+      , "KE" ~> "Kenya"
+      , "KG" ~> "Kyrgyzstan"
+      , "KH" ~> "Cambodia"
+      , "KI" ~> "Kiribati"
+      , "KM" ~> "Comoros"
+      , "KN" ~> "Saint Kitts and Nevis"
+      , "KP" ~> "North Korea" -- Korea, Democratic People's Republic of
+      , "KR" ~> "South Korea" -- Korea, Republic of
+      , "KW" ~> "Kuwait"
+      , "KY" ~> "Cayman Islands"
+      , "KZ" ~> "Kazakhstan"
+      , "LA" ~> "Laos" -- Lao People's Democratic Republic
+      , "LB" ~> "Lebanon"
+      , "LC" ~> "Saint Lucia"
+      , "LI" ~> "Liechtenstein"
+      , "LK" ~> "Sri Lanka"
+      , "LR" ~> "Liberia"
+      , "LS" ~> "Lesotho"
+      , "LT" ~> "Lithuania"
+      , "LU" ~> "Luxembourg"
+      , "LV" ~> "Latvia"
+      , "LY" ~> "Libya"
+      , "MA" ~> "Morocco"
+      , "MC" ~> "Monaco"
+      , "MD" ~> "Moldova" -- Moldova, Republic of
+      , "ME" ~> "Montenegro"
+      , "MF" ~> "Collectivity of Saint Martin" -- Saint Martin (French part
+      , "MG" ~> "Madagascar"
+      , "MH" ~> "Marshall Islands"
+      , "MK" ~> "Republic of Macedonia" -- Macedonia, the former Yugoslav Republic of
+      , "ML" ~> "Mali"
+      , "MM" ~> "Myanmar"
+      , "MN" ~> "Mongolia"
+      , "MO" ~> "Macau" -- Macao
+      , "MP" ~> "Northern Mariana Islands"
+      , "MQ" ~> "Martinique"
+      , "MR" ~> "Mauritania"
+      , "MS" ~> "Montserrat"
+      , "MT" ~> "Malta"
+      , "MU" ~> "Mauritius"
+      , "MV" ~> "Maldives"
+      , "MW" ~> "Malawi"
+      , "MX" ~> "Mexico"
+      , "MY" ~> "Malaysia"
+      , "MZ" ~> "Mozambique"
+      , "NA" ~> "Namibia"
+      , "NC" ~> "New Caledonia"
+      , "NE" ~> "Niger"
+      , "NF" ~> "Norfolk Island"
+      , "NG" ~> "Nigeria"
+      , "NI" ~> "Nicaragua"
+      , "NL" ~> "Netherlands"
+      , "NO" ~> "Norway"
+      , "NP" ~> "Nepal"
+      , "NR" ~> "Nauru"
+      , "NU" ~> "Niue"
+      , "NZ" ~> "New Zealand"
+      , "OM" ~> "Oman"
+      , "PA" ~> "Panama"
+      , "PE" ~> "Peru"
+      , "PF" ~> "French Polynesia"
+      , "PG" ~> "Papua New Guinea"
+      , "PH" ~> "Philippines"
+      , "PK" ~> "Pakistan"
+      , "PL" ~> "Poland"
+      , "PM" ~> "Saint Pierre and Miquelon"
+      , "PN" ~> "Pitcairn Islands" -- Pitcairn
+      , "PR" ~> "Puerto Rico"
+      , "PS" ~> "State of Palestine" -- Palestine, State of
+      , "PT" ~> "Portugal"
+      , "PW" ~> "Palau"
+      , "PY" ~> "Paraguay"
+      , "QA" ~> "Qatar"
+      , "RE" ~> "Réunion"
+      , "RO" ~> "Romania"
+      , "RS" ~> "Serbia"
+      , "RU" ~> "Russia" -- Russian Federation
+      , "RW" ~> "Rwanda"
+      , "SA" ~> "Saudi Arabia"
+      , "SB" ~> "Solomon Islands"
+      , "SC" ~> "Seychelles"
+      , "SD" ~> "Sudan"
+      , "SE" ~> "Sweden"
+      , "SG" ~> "Singapore"
+      , "SH" ~> "Saint Helena and Ascension and Tristan da Cunha" -- Saint Helena, Ascension and Tristan da Cunha
+      , "SI" ~> "Slovenia"
+      , "SJ" ~> "Svalbard and Jan Mayen"
+      , "SK" ~> "Slovakia"
+      , "SL" ~> "Sierra Leone"
+      , "SM" ~> "San Marino"
+      , "SN" ~> "Senegal"
+      , "SO" ~> "Somalia"
+      , "SR" ~> "Suriname"
+      , "SS" ~> "South Sudan"
+      , "ST" ~> "São Tomé and Príncipe"
+      , "SV" ~> "El Salvador"
+      , "SX" ~> "Sint Maarten" -- Sint Maarten (Dutch part
+      , "SY" ~> "Syria" -- Syrian Arab Republic
+      , "SZ" ~> "Swaziland"
+      , "TC" ~> "Turks and Caicos Islands"
+      , "TD" ~> "Chad"
+      , "TF" ~> "French Southern and Antarctic Lands" -- French Southern Territories
+      , "TG" ~> "Togo"
+      , "TH" ~> "Thailand"
+      , "TJ" ~> "Tajikistan"
+      , "TK" ~> "Tokelau"
+      , "TL" ~> "East Timor" -- Timor-Leste
+      , "TM" ~> "Turkmenistan"
+      , "TN" ~> "Tunisia"
+      , "TO" ~> "Tonga"
+      , "TR" ~> "Turkey"
+      , "TT" ~> "Trinidad and Tobago"
+      , "TV" ~> "Tuvalu"
+      , "TW" ~> "Taiwan" -- Taiwan, Province of China
+      , "TZ" ~> "Tanzania" -- Tanzania, United Republic of
+      , "UA" ~> "Ukraine"
+      , "UG" ~> "Uganda"
+      , "UM" ~> "United States Minor Outlying Islands"
+      , "US" ~> "United States"
+      , "UY" ~> "Uruguay"
+      , "UZ" ~> "Uzbekistan"
+      , "VA" ~> "Vatican City" -- Holy See (Vatican City State
+      , "VC" ~> "Saint Vincent and the Grenadines"
+      , "VE" ~> "Venezuela" -- Venezuela, Bolivarian Republic of
+      , "VG" ~> "British Virgin Islands" -- Virgin Islands, British
+      , "VI" ~> "United States Virgin Islands" -- Virgin Islands, U.S.
+      , "VN" ~> "Vietnam" -- Viet Nam
+      , "VU" ~> "Vanuatu"
+      , "WF" ~> "Wallis and Futuna"
+      , "WS" ~> "Samoa"
+      , "YE" ~> "Yemen"
+      , "YT" ~> "Mayotte"
+      , "ZA" ~> "South Africa"
+      , "ZM" ~> "Zambia"
+      , "ZW" ~> "Zimbabwe"
+      ]
 
 --------------------------------------------------------------------------------

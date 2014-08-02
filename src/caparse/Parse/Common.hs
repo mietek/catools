@@ -120,4 +120,8 @@ istring this = do
     scan _ _
         = pfail
 
+(~>) :: String -> String -> ReadP String
+from ~> to =
+    istring from >> return to
+
 --------------------------------------------------------------------------------
