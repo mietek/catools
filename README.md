@@ -3,7 +3,7 @@
 CA Tools
 ========
 
-This is a set of tools for interfacing with Cater Allen.
+This is a set of tools for interfacing with [Cater Allen](http://www.caterallen.co.uk).
 
 To build:
 
