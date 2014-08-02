@@ -148,7 +148,7 @@ countryCode =
       , "ET" ~> "Ethiopia"
       , "FI" ~> "Finland"
       , "FJ" ~> "Fiji"
-      , "FK" ~> "Falkland Islands" -- Falkland Islands (Malvinas
+      , "FK" ~> "Falkland Islands" -- Falkland Islands (Malvinas)
       , "FM" ~> "Federated States of Micronesia" -- Micronesia, Federated States of
       , "FO" ~> "Faroe Islands"
       , "FR" ~> "France"
@@ -217,7 +217,7 @@ countryCode =
       , "MC" ~> "Monaco"
       , "MD" ~> "Moldova" -- Moldova, Republic of
       , "ME" ~> "Montenegro"
-      , "MF" ~> "Collectivity of Saint Martin" -- Saint Martin (French part
+      , "MF" ~> "Collectivity of Saint Martin" -- Saint Martin (French part)
       , "MG" ~> "Madagascar"
       , "MH" ~> "Marshall Islands"
       , "MK" ~> "Republic of Macedonia" -- Macedonia, the former Yugoslav Republic of
@@ -287,7 +287,7 @@ countryCode =
       , "SS" ~> "South Sudan"
       , "ST" ~> "São Tomé and Príncipe"
       , "SV" ~> "El Salvador"
-      , "SX" ~> "Sint Maarten" -- Sint Maarten (Dutch part
+      , "SX" ~> "Sint Maarten" -- Sint Maarten (Dutch part)
       , "SY" ~> "Syria" -- Syrian Arab Republic
       , "SZ" ~> "Swaziland"
       , "TC" ~> "Turks and Caicos Islands"
@@ -312,7 +312,7 @@ countryCode =
       , "US" ~> "United States"
       , "UY" ~> "Uruguay"
       , "UZ" ~> "Uzbekistan"
-      , "VA" ~> "Vatican City" -- Holy See (Vatican City State
+      , "VA" ~> "Vatican City" -- Holy See (Vatican City State)
       , "VC" ~> "Saint Vincent and the Grenadines"
       , "VE" ~> "Venezuela" -- Venezuela, Bolivarian Republic of
       , "VG" ~> "British Virgin Islands" -- Virgin Islands, British
