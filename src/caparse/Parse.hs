@@ -1,5 +1,7 @@
 --------------------------------------------------------------------------------
 
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+
 module Parse where
 
 import Control.Lens ((&), (^.), (.~))
@@ -32,7 +34,7 @@ parse p str =
 
 typeAndDetail :: ReadP TxnTypeAndDetail
 typeAndDetail =
-    choice
+    leftBiasedChoice
       [ credit
       , debit
       , visaCredit
@@ -47,61 +49,61 @@ typeAndDetail =
 
 credit :: ReadP TxnTypeAndDetail
 credit = do
-    skipString "Giro: "
+    string "Giro: "
     str <- munch1 isPrint
     return (Credit, Left str)
 
 debit :: ReadP TxnTypeAndDetail
 debit = do
-    skipString "R/P to "
+    string "R/P to "
     str <- munch1 isPrint
     return (Debit, Left str)
 
 visaCredit :: ReadP TxnTypeAndDetail
 visaCredit = do
-    skipString "Visa Sales Credit "
+    string "Visa Sales Credit "
     det <- visaDetail
     return (VisaCredit, Right det)
 
 visaDebit :: ReadP TxnTypeAndDetail
 visaDebit = do
-    skipString "Visa Sales "
+    string "Visa Sales "
     det <- visaDetail
-    let amt = 0 - (det ^. detailAmount)
-    return (VisaDebit, Right (det & detailAmount .~ amt))
+    let amt = 0 - (det ^. detailOriginalAmount)
+    return (VisaDebit, Right (det & detailOriginalAmount .~ amt))
 
 chequeCredit :: ReadP TxnTypeAndDetail
 chequeCredit = do
-    skipString "Cheque Deposit"
+    string "Cheque Deposit"
     return (ChequeCredit, Left "")
 
 foreignCredit :: ReadP TxnTypeAndDetail
 foreignCredit = do
-    skipString "TT b/o "
+    string "TT b/o "
     det <- foreignCreditDetail
     return (ForeignCredit, Right det)
 
 freeForeignCredit :: ReadP TxnTypeAndDetail
 freeForeignCredit = do
-    skipString "B/o "
+    string "B/o "
     det <- foreignCreditDetail
     return (FreeForeignCredit, Right det)
 
 directDebit :: ReadP TxnTypeAndDetail
 directDebit = do
-    skipString "DD to "
+    string "DD to "
     str <- munch1 isPrint
     return (DirectDebit, Left str)
 
 recurringDebit :: ReadP TxnTypeAndDetail
 recurringDebit = do
-    skipString "S/O to "
+    string "S/O to "
     str <- munch1 isPrint
     return (RecurringDebit, Left str)
 
 serviceDebit :: ReadP TxnTypeAndDetail
 serviceDebit = do
-    skipString "Service Charge"
+    string "Service Charge"
     return (ServiceDebit, Left "")
 
 --------------------------------------------------------------------------------
@@ -109,49 +111,54 @@ serviceDebit = do
 visaDetail :: ReadP TxnDetail
 visaDetail = do
     party <- trim <$> count 25 (satisfy isPrint)
-    skipSpace
+    char ' '
     code <- count 4 (satisfy isDigit)
-    skipSpace
+    char ' '
     ref <- trim <$> count 13 (satisfy isPrint)
-    skipSpace
+    char ' '
     ter <- option "" visaTerritory
     amt <- option 0 $ do
-      skipSpace
+      char ' '
       amt <- decimal
-      skipSpace
+      char ' '
       return amt
-    optional skipSpace
+    optional (char ' ')
     cur <- option "" $ do
       cur <- visaCurrency
-      skipSpace
+      char ' '
       return cur
     date <- visaDate
     rate <- option 0 $ do
-      skipString " Fx "
-      decimal
+      string " Fx "
+      rate <- decimal
+      char ' '
+      return rate
     fee <- option 0 $ do
-      skipString "   Fee "
-      decimal
-    _ <- munch isPrint
+      string "  Fee "
+      fee <- decimal
+      return fee
+    optional (string "  Fee")
     return $
       emptyTxnDetail
-        & detailParty     .~ party
-        & detailCode      .~ code
-        & detailReference .~ ref
-        & detailTerritory .~ ter
-        & detailAmount    .~ amt
-        & detailCurrency  .~ cur
-        & detailDate      .~ Just date
-        & detailRate      .~ rate
-        & detailFee       .~ fee
+        & detailParty            .~ party
+        & detailCode             .~ code
+        & detailReference        .~ ref
+        & detailTerritory        .~ ter
+        & detailOriginalAmount   .~ amt
+        & detailOriginalCurrency .~ cur
+        & detailOriginalDate     .~ Just date
+        & detailConversionRate   .~ rate
+        & detailConversionFee    .~ fee
 
 visaCurrency :: ReadP String
 visaCurrency =
-    choice
-      [ "EU"  ~> "EUR"
-      , "US"  ~> "USD"
+    leftBiasedChoice
+      [ "EUR" ~> "EUR"
       , "USD" ~> "USD"
-      , many1 (satisfy isLetter)
+      , "EU"  ~> "EUR"
+      , "US"  ~> "USD"
+      , count 3 (satisfy isLetter)
+      , count 2 (satisfy isLetter)
       ]
 
 --------------------------------------------------------------------------------
@@ -162,14 +169,14 @@ foreignCreditDetail = do
     skipSpaces
     amt <- decimal
     cur <- count 3 (satisfy isLetter)
-    skipString ": Buy rate "
+    string ": Buy rate "
     rate <- decimal
     return $
       emptyTxnDetail
-        & detailParty    .~ party
-        & detailAmount   .~ amt
-        & detailCurrency .~ cur
-        & detailRate     .~ rate
+        & detailParty            .~ party
+        & detailOriginalAmount   .~ amt
+        & detailOriginalCurrency .~ cur
+        & detailConversionRate   .~ rate
 
 --------------------------------------------------------------------------------
 

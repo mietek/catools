@@ -69,15 +69,15 @@ emptySrcTxn =
 type TxnTypeAndDetail = (TxnType, Either String TxnDetail)
 
 data TxnDetail = TxnDetail
-    { _detailParty     :: !String
-    , _detailCode      :: !String
-    , _detailReference :: !String
-    , _detailTerritory :: !String
-    , _detailAmount    :: !Decimal
-    , _detailCurrency  :: !String
-    , _detailDate      :: !(Maybe Day)
-    , _detailRate      :: !Decimal
-    , _detailFee       :: !Decimal
+    { _detailParty            :: !String
+    , _detailCode             :: !String
+    , _detailReference        :: !String
+    , _detailTerritory        :: !String
+    , _detailOriginalAmount   :: !Decimal
+    , _detailOriginalCurrency :: !String
+    , _detailOriginalDate     :: !(Maybe Day)
+    , _detailConversionRate   :: !Decimal
+    , _detailConversionFee    :: !Decimal
     }
   deriving (Show)
 
@@ -86,15 +86,15 @@ makeLenses ''TxnDetail
 emptyTxnDetail :: TxnDetail
 emptyTxnDetail =
     TxnDetail
-      { _detailParty     = ""
-      , _detailCode      = ""
-      , _detailReference = ""
-      , _detailTerritory = ""
-      , _detailAmount    = 0
-      , _detailCurrency  = ""
-      , _detailDate      = Nothing
-      , _detailRate      = 0
-      , _detailFee       = 0
+      { _detailParty            = ""
+      , _detailCode             = ""
+      , _detailReference        = ""
+      , _detailTerritory        = ""
+      , _detailOriginalAmount   = 0
+      , _detailOriginalCurrency = ""
+      , _detailOriginalDate     = Nothing
+      , _detailConversionRate   = 0
+      , _detailConversionFee    = 0
       }
 
 --------------------------------------------------------------------------------
@@ -108,6 +108,8 @@ data DstTxn = DstTxn
     , _dstTerritory        :: !String
     , _dstOriginalAmount   :: !String
     , _dstOriginalCurrency :: !String
+    , _dstConversionRate   :: !String
+    , _dstConversionFee    :: !String
     , _dstAmount           :: !String
     , _dstBalance          :: !String
     }
@@ -128,6 +130,8 @@ emptyDstTxn =
       , _dstTerritory        = ""
       , _dstOriginalAmount   = ""
       , _dstOriginalCurrency = ""
+      , _dstConversionRate   = ""
+      , _dstConversionFee    = ""
       , _dstAmount           = ""
       , _dstBalance          = ""
       }

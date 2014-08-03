@@ -12,15 +12,7 @@ import Parse.Common
 
 visaTerritory :: ReadP String
 visaTerritory =
-    choice
-      [ stateCode
-      , countryCode
-      , count 2 (satisfy isLetter)
-      ]
-
-stateCode :: ReadP String
-stateCode =
-    choice
+    leftBiasedChoice
       [ "AL" ~> "Alabama"
       , "AK" ~> "Alaska"
       , "AZ" ~> "Arizona"
@@ -72,12 +64,8 @@ stateCode =
       , "WV" ~> "West Virginia"
       , "WI" ~> "Wisconsin"
       , "WY" ~> "Wyoming"
-      ]
 
-countryCode :: ReadP String
-countryCode =
-    choice
-      [ "AD" ~> "Andorra"
+      , "AD" ~> "Andorra"
       , "AE" ~> "United Arab Emirates"
       , "AF" ~> "Afghanistan"
       , "AG" ~> "Antigua and Barbuda"
@@ -326,6 +314,8 @@ countryCode =
       , "ZA" ~> "South Africa"
       , "ZM" ~> "Zambia"
       , "ZW" ~> "Zimbabwe"
+
+      , count 2 (satisfy isLetter)
       ]
 
 --------------------------------------------------------------------------------

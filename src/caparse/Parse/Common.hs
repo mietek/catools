@@ -1,5 +1,7 @@
 --------------------------------------------------------------------------------
 
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+
 module Parse.Common where
 
 import Control.Applicative ((<$>))
@@ -14,9 +16,9 @@ import Text.ParserCombinators.ReadP
 visaDate :: ReadP Day
 visaDate = do
     d <- read <$> count 2 (satisfy isDigit)
-    skipChar '/'
+    char '/'
     m <- read <$> count 2 (satisfy isDigit)
-    skipChar '/'
+    char '/'
     shortY <- read <$> count 2 (satisfy isDigit)
     let y = if shortY < 70 then 2000 + shortY else 1900 + shortY
     maybe pfail return (fromGregorianValid y m d)
@@ -32,7 +34,7 @@ shortDate = do
 
 shortMonth :: ReadP Int
 shortMonth =
-    choice
+    leftBiasedChoice
       [ "Jan" ~> 1
       , "Feb" ~> 2
       , "Mar" ~> 3
@@ -49,61 +51,39 @@ shortMonth =
 
 --------------------------------------------------------------------------------
 
-skipChar :: Char -> ReadP ()
-skipChar c = do
-    _ <- char c
-    return ()
-
-skipSpace :: ReadP ()
-skipSpace =
-    skipChar ' '
-
-skipString :: String -> ReadP ()
-skipString str = do
-    _ <- string str
-    return ()
-
---------------------------------------------------------------------------------
-
 decimal :: ReadP Decimal
 decimal = do
-    int <- integer
-    option (Decimal 0 int) $ do
-      skipChar '.'
-      digs <- many1 (satisfy isDigit)
-      let e = fromIntegral (length digs)
-          f = read digs * signum int
-          d = int * 10^e + f
-      return (Decimal e (d :: Integer))
+    n <- integer
+    option (Decimal 0 n) $ do
+      char '.'
+      digs <- munch1 isDigit
+      let s = if signum n == (-1) then (-1) else 1
+          e = length digs
+          f = read digs
+          d = n * 10 ^ e + (f * s)
+      return (Decimal (fromIntegral e) d)
 
 --------------------------------------------------------------------------------
 
 integer :: ReadP Integer
 integer = do
-    sign <- option 1 $ do
-      skipChar '-'
+    s <- option 1 $ do
+      char '-'
       return (-1)
-    int <- unsignedInteger
-    return (int * sign)
+    n <- read <$> commaSepTriplets <++ munch1 isDigit
+    return (n * s)
 
-unsignedInteger :: ReadP Integer
-unsignedInteger =
-    choice
-      [ read <$> many1 (satisfy isDigit)
-      , unsignedIntegerWithCommas
-      ]
-
-unsignedIntegerWithCommas :: ReadP Integer
-unsignedIntegerWithCommas = do
+commaSepTriplets :: ReadP String
+commaSepTriplets = do
     tri1 <- option "" $ do
       dig1 <- satisfy isDigit
       digs <- option [] $ do
         dig2 <- satisfy isDigit
         return [dig2]
-      skipChar ','
+      char ','
       return (dig1 : digs)
     tris <- sepBy1 (count 3 (satisfy isDigit)) (char ',')
-    return (read (concat (tri1 : tris)))
+    return (concat (tri1 : tris))
 
 --------------------------------------------------------------------------------
 
@@ -122,7 +102,21 @@ caseInsensitiveString this = do
 
 (~>) :: String -> a -> ReadP a
 str ~> val = do
-    _ <- caseInsensitiveString str
+    caseInsensitiveString str
     return val
+
+--------------------------------------------------------------------------------
+
+leftBiasedChoice :: [ReadP a] -> ReadP a
+leftBiasedChoice [] =
+    pfail
+leftBiasedChoice [p] =
+    p
+leftBiasedChoice (p : ps) =
+    p <++ leftBiasedChoice ps
+
+space :: ReadP Char
+space =
+    char ' '
 
 --------------------------------------------------------------------------------

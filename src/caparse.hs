@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Exception (SomeException, handle)
-import Control.Lens ((&), (.~), (^.))
+import Control.Lens ((&), (.~), (^.), ASetter)
 import Data.Csv (encode)
 import Data.Csv.Streaming (HasHeader (NoHeader), Records (Nil, Cons), decode)
 import System.IO (hPutStrLn, stderr)
@@ -53,35 +53,41 @@ doTxn txn =
 doSimpleTxn :: SrcTxn -> TxnType -> String -> DstTxn
 doSimpleTxn txn typ str =
     emptyDstTxn
-      & dstDate         .~ date
-      & dstOriginalDate .~ date
-      & dstType         .~ show typ
-      & dstParty        .~ filter (/= ',') str
-      & dstReference    .~ filter (/= ',') (txn ^. srcSubReference)
-      & dstAmount       .~ txn ^. srcAmount
-      & dstBalance      .~ txn ^. srcBalance
+      & dstDate         .! date
+      & dstOriginalDate .! date
+      & dstType         .! show typ
+      & dstParty        .! str
+      & dstReference    .! txn ^. srcSubReference
+      & dstAmount       .! txn ^. srcAmount
+      & dstBalance      .! txn ^. srcBalance
   where
     date = show (parse P.shortDate (txn ^. srcDate))
 
 doDetailTxn :: SrcTxn -> TxnType -> TxnDetail -> DstTxn
 doDetailTxn txn typ det =
     emptyDstTxn
-      & dstDate             .~ date
-      & dstOriginalDate     .~ maybe date show (det ^. detailDate)
-      & dstType             .~ show typ
-      & dstParty            .~ filter (/= ',') (det ^. detailParty)
-      & dstReference        .~ ref
-      & dstTerritory        .~ filter (/= ',') (det ^. detailTerritory)
-      & dstOriginalAmount   .~ amt
-      & dstOriginalCurrency .~ det ^. detailCurrency
-      & dstAmount           .~ txn ^. srcAmount
-      & dstBalance          .~ txn ^. srcBalance
+      & dstDate             .! date
+      & dstOriginalDate     .! maybe date show (det ^. detailOriginalDate)
+      & dstType             .! show typ
+      & dstParty            .! det ^. detailParty
+      & dstReference        .! det ^. detailReference ++ txn ^. srcSubReference
+      & dstTerritory        .! det ^. detailTerritory
+      & dstOriginalAmount   .! showNotZero (det ^. detailOriginalAmount)
+      & dstOriginalCurrency .! det ^. detailOriginalCurrency
+      & dstConversionRate   .! showNotZero (det ^. detailConversionRate)
+      & dstConversionFee    .! showNotZero (det ^. detailConversionFee)
+      & dstAmount           .! txn ^. srcAmount
+      & dstBalance          .! txn ^. srcBalance
   where
-    date   = show (parse P.shortDate (txn ^. srcDate))
-    ref    = detRef ++ if null detRef || null subRef then "" else " " ++ subRef
-    detRef = det ^. detailReference
-    subRef = txn ^. srcSubReference
-    amt    = if detAmt /= 0 then show detAmt else ""
-    detAmt = det ^. detailAmount
+    date = show (parse P.shortDate (txn ^. srcDate))
+    showNotZero n = if n /= 0 then show n else ""
+
+--------------------------------------------------------------------------------
+
+infixr 2 .!
+
+(.!) :: ASetter s t a String -> [Char] -> s -> t
+x .! y =
+  x .~ P.trim (filter (/= ',') y)
 
 --------------------------------------------------------------------------------
