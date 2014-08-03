@@ -111,27 +111,27 @@ serviceDebit = do
 visaDetail :: ReadP TxnDetail
 visaDetail = do
     party <- trim <$> count 25 (satisfy isPrint)
-    char ' '
+    space
     code <- count 4 (satisfy isDigit)
-    char ' '
+    space
     ref <- trim <$> count 13 (satisfy isPrint)
-    char ' '
+    space
     ter <- option "" visaTerritory
     amt <- option 0 $ do
-      char ' '
+      space
       amt <- decimal
-      char ' '
+      space
       return amt
-    optional (char ' ')
+    optional space
     cur <- option "" $ do
       cur <- visaCurrency
-      char ' '
+      space
       return cur
     date <- visaDate
     rate <- option 0 $ do
       string " Fx "
       rate <- decimal
-      char ' '
+      space
       return rate
     fee <- option 0 $ do
       string "  Fee "
