@@ -54,13 +54,13 @@ getOpts =
         , "Usage: cascrape FROM_DATE TO_DATE"
         , ""
         , "Arguments:"
-        , "  FROM_DATE  First day of transactions (YYYY-MM-DD)"
-        , "  TO_DATE    Last day of transactions  (YYYY-MM-DD)"
+        , "  FROM_DATE  First day of transactions  YYYY-MM-DD"
+        , "  TO_DATE    Last day of transactions   YYYY-MM-DD"
         , ""
         , "Environment variables:"
         , "  CA_USER_NAME           Cater Allen user name"
-        , "  CA_SECRET_ACCESS_CODE  Cater Allen secret access code"
-        , "  CA_SECRET_PASSWORD     Cater Allen secret password"
+        , "  CA_SECRET_ACCESS_CODE  Cater Allen personal access code"
+        , "  CA_SECRET_PASSWORD     Cater Allen internet password"
         ]
       exitFailure
 
