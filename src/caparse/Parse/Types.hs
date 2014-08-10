@@ -22,8 +22,10 @@ data TxnType =
     | ForeignCredit
     | FreeForeignCredit
     | DirectDebit
+    | RejectDirectDebit
     | RecurringDebit
     | ServiceDebit
+    | PenaltyDebit
   deriving (Eq)
 
 instance Show TxnType
@@ -36,8 +38,10 @@ instance Show TxnType
     show ForeignCredit     = "foreign credit"
     show FreeForeignCredit = "free foreign credit"
     show DirectDebit       = "direct debit"
+    show RejectDirectDebit = "reject direct debit"
     show RecurringDebit    = "recurring debit"
     show ServiceDebit      = "service debit"
+    show PenaltyDebit      = "penalty debit"
 
 --------------------------------------------------------------------------------
 

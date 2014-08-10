@@ -95,6 +95,11 @@ directDebit = do
     str <- munch1 isPrint
     return (DirectDebit, Left str)
 
+rejectDirectDebit :: ReadP TxnTypeAndDetail
+rejectDirectDebit = do
+    string "Manual Reject Dd to"
+    return (RejectDirectDebit, Left "")
+
 recurringDebit :: ReadP TxnTypeAndDetail
 recurringDebit = do
     string "S/O to "
@@ -105,6 +110,11 @@ serviceDebit :: ReadP TxnTypeAndDetail
 serviceDebit = do
     string "Service Charge"
     return (ServiceDebit, Left "")
+
+penaltyDebit :: ReadP TxnTypeAndDetail
+penaltyDebit = do
+    string "Insufficient Funds Charge"
+    return (PenaltyDebit, Left "")
 
 --------------------------------------------------------------------------------
 
